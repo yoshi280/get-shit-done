@@ -85,34 +85,34 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIM-01 | — | Pending |
-| DIM-02 | — | Pending |
-| DIM-03 | — | Pending |
-| DIM-04 | — | Pending |
-| ITER-01 | — | Pending |
-| ITER-02 | — | Pending |
-| ITER-03 | — | Pending |
-| ITER-04 | — | Pending |
-| CTX-01 | — | Pending |
-| CTX-02 | — | Pending |
-| CTX-03 | — | Pending |
-| CTX-04 | — | Pending |
-| WF-01 | — | Pending |
-| WF-02 | — | Pending |
-| WF-03 | — | Pending |
-| WF-04 | — | Pending |
-| IDEA-01 | — | Pending |
-| IDEA-02 | — | Pending |
-| IDEA-03 | — | Pending |
-| OBS-01 | — | Pending |
-| OBS-02 | — | Pending |
-| OBS-03 | — | Pending |
+| DIM-01 | Phase 1 | Pending |
+| DIM-02 | Phase 1 | Pending |
+| DIM-03 | Phase 1 | Pending |
+| DIM-04 | Phase 1 | Pending |
+| OBS-01 | Phase 1 | Pending |
+| OBS-02 | Phase 1 | Pending |
+| OBS-03 | Phase 1 | Pending |
+| IDEA-01 | Phase 2 | Pending |
+| IDEA-02 | Phase 2 | Pending |
+| IDEA-03 | Phase 2 | Pending |
+| CTX-01 | Phase 3 | Pending |
+| CTX-02 | Phase 3 | Pending |
+| CTX-03 | Phase 3 | Pending |
+| CTX-04 | Phase 3 | Pending |
+| ITER-01 | Phase 4 | Pending |
+| ITER-02 | Phase 4 | Pending |
+| ITER-03 | Phase 4 | Pending |
+| ITER-04 | Phase 4 | Pending |
+| WF-01 | Phase 5 | Pending |
+| WF-02 | Phase 5 | Pending |
+| WF-03 | Phase 5 | Pending |
+| WF-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 after roadmap creation*
