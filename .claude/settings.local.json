@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo:*)",
+      "Bash(sudo ln:*)",
+      "Bash(git -C /Users/thelorax log --format=\"%h %s\" -30)",
+      "Bash(ssh:*)"
+    ]
+  }
+}

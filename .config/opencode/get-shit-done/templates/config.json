@@ -1,0 +1,281 @@
+{
+  "mode": "interactive",
+  "depth": "standard",
+  "model_profile": "balanced",
+  "model_allocation": {
+    "quality": {
+      "gsd-planner": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-roadmapper": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-executor": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallback": [
+          "openai/gpt-5.3-codex",
+          "openai/gpt-5.2-codex",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      },
+      "gsd-debugger": {
+        "primary": "openai/gpt-5.3-codex",
+        "fallback": [
+          "anthropic/claude-opus-4-6",
+          "openai/gpt-5.2-codex",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      },
+      "gsd-phase-researcher": {
+        "primary": "google/gemini-2.5-pro",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-project-researcher": {
+        "primary": "google/gemini-2.5-pro",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-research-synthesizer": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-codebase-mapper": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-haiku-4-5",
+          "openai/gpt-5.1-codex-mini"
+        ]
+      },
+      "gsd-verifier": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-plan-checker": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-integration-checker": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      }
+    },
+    "balanced": {
+      "gsd-planner": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-roadmapper": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-executor": {
+        "primary": "openai/gpt-5.2-codex",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.1-codex",
+          "google/gemini-2.5-pro"
+        ]
+      },
+      "gsd-debugger": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "openai/gpt-5.2-codex",
+          "openai/gpt-5.1-codex",
+          "google/gemini-2.5-pro"
+        ]
+      },
+      "gsd-phase-researcher": {
+        "primary": "google/gemini-2.5-pro",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-project-researcher": {
+        "primary": "google/gemini-2.5-pro",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-research-synthesizer": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-codebase-mapper": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-haiku-4-5",
+          "openai/gpt-5.1-codex-mini"
+        ]
+      },
+      "gsd-verifier": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-flash",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-plan-checker": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-flash",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-integration-checker": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-5",
+          "openai/gpt-5.2"
+        ]
+      }
+    },
+    "budget": {
+      "gsd-planner": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-pro",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-roadmapper": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallback": [
+          "google/gemini-2.5-flash",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-executor": {
+        "primary": "openai/gpt-5.1-codex",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.1-codex-mini",
+          "google/gemini-2.5-flash"
+        ]
+      },
+      "gsd-debugger": {
+        "primary": "anthropic/claude-sonnet-4-0",
+        "fallback": [
+          "openai/gpt-5.1-codex",
+          "openai/gpt-5.1-codex-mini",
+          "google/gemini-2.5-flash"
+        ]
+      },
+      "gsd-phase-researcher": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-project-researcher": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-research-synthesizer": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-codebase-mapper": {
+        "primary": "google/gemini-2.5-flash-lite",
+        "fallback": [
+          "anthropic/claude-haiku-4-5",
+          "openai/gpt-5.1-codex-mini"
+        ]
+      },
+      "gsd-verifier": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-plan-checker": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      },
+      "gsd-integration-checker": {
+        "primary": "google/gemini-2.5-flash",
+        "fallback": [
+          "anthropic/claude-sonnet-4-0",
+          "openai/gpt-5.2"
+        ]
+      }
+    }
+  },
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true
+  },
+  "planning": {
+    "commit_docs": true,
+    "search_gitignored": false
+  },
+  "parallelization": {
+    "enabled": true,
+    "plan_level": true,
+    "task_level": false,
+    "skip_checkpoints": true,
+    "max_concurrent_agents": 3,
+    "min_plans_for_parallel": 2
+  },
+  "gates": {
+    "confirm_project": true,
+    "confirm_phases": true,
+    "confirm_roadmap": true,
+    "confirm_breakdown": true,
+    "confirm_plan": true,
+    "execute_next_plan": true,
+    "issues_review": true,
+    "confirm_transition": true
+  },
+  "safety": {
+    "always_confirm_destructive": true,
+    "always_confirm_external_services": true
+  }
+}
