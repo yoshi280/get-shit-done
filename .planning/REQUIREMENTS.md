@@ -3,7 +3,7 @@
 **Defined:** 2026-02-16
 **Core Value:** GSD agents should accumulate and apply context intelligently — the right research for the right project, and knowledge that persists and compounds across phases.
 
-## v1 Requirements
+## v1.0 Requirements
 
 ### Research Dimensions
 
@@ -45,6 +45,28 @@
 - [ ] **OBS-02**: Token usage tracked per phase execution
 - [ ] **OBS-03**: Cost summary displayed in progress reports
 
+## v1.1 Requirements
+
+### Runtime Detection
+
+- [ ] **RTE-01**: GSD detects the active runtime via multi-signal heuristics (env vars + filesystem) and exposes a `runtime` field in all gsd-tools.cjs init JSON payloads
+- [ ] **RTE-02**: Parallelization is forced to `false` in init JSON when runtime is not Claude Code, regardless of config.json settings
+
+### OpenCode Agent Registration
+
+- [ ] **OCA-01**: GSD installer injects named agent system prompts from `gsd-*.md` files into `opencode.json` as `AgentConfig` entries so GSD's named agent types resolve on OpenCode
+- [ ] **OCA-02**: gsd-tools.cjs resolves GSD tier names (`opus`, `sonnet`, `haiku`) to `provider/model` strings that OpenCode's `AgentConfig.model` field accepts
+
+### OpenCode Workflow Parity
+
+- [ ] **OWP-01**: The 5 key GSD workflows (`new-project`, `plan-phase`, `execute-phase`, `new-milestone`, `research-phase`) contain runtime-conditional spawn blocks that execute inline when the Task tool is unavailable
+- [ ] **OWP-02**: Every fallback execution path displays an explicit degradation notice: what capability is absent, what the fallback does instead, and expected performance impact
+
+### Validation
+
+- [ ] **VAL-01**: Integration tests verify happy-path artifact output for `/gsd:new-project`, `/gsd:plan-phase`, and `/gsd:execute-phase` on OpenCode
+- [ ] **VAL-02**: A runtime capability matrix is produced and committed, replacing LOW/MEDIUM-confidence entries from the v1.1 research
+
 ## v2 Requirements
 
 ### Research Dimensions
@@ -69,6 +91,12 @@
 - **WF-05**: Workflow DSL in markdown for fully user-defined workflow steps
 - **WF-06**: Phase injection — insert urgent work mid-roadmap without disrupting flow
 
+### Runtime Support
+
+- **RTE-03**: User can override runtime detection via `config.json` manual `runtime` field
+- **RTE-04**: GSD warns at session start when OpenCode is backed by a non-Claude model
+- **RTE-05**: Codex CLI runtime support — full GSD support for OpenAI Codex CLI (deferred pending capability audit)
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -80,6 +108,9 @@
 | Real-time agent coordination | Unnecessary complexity; checkpoint-based is sufficient |
 | Agents for deterministic tasks | Rules-based systems are simpler and more reliable |
 | Graph-based workflow visualization | Nice-to-have UI, not core to workflow improvement |
+| Codex CLI support in v1.1 | Requires capability audit; training data confidence is LOW (released Apr 2025, post-cutoff); deferred to v1.2 |
+| config.json runtime override (v1.1) | Deferred to v2 — auto-detection sufficient for initial release |
+| Gemini CLI workflow parity | Explicitly deferred to v1.2+ per PROJECT.md |
 
 ## Traceability
 
@@ -108,11 +139,20 @@
 | WF-03 | Phase 5 | Pending |
 | WF-04 | Phase 5 | Pending |
 
+| RTE-01 | Phase TBD | Pending |
+| RTE-02 | Phase TBD | Pending |
+| OCA-01 | Phase TBD | Pending |
+| OCA-02 | Phase TBD | Pending |
+| OWP-01 | Phase TBD | Pending |
+| OWP-02 | Phase TBD | Pending |
+| VAL-01 | Phase TBD | Pending |
+| VAL-02 | Phase TBD | Pending |
+
 **Coverage:**
-- v1 requirements: 22 total
-- Mapped to phases: 22
-- Unmapped: 0
+- v1.0 requirements: 22 total — mapped to phases 1-5 ✓
+- v1.1 requirements: 8 total — phases TBD (roadmap creation pending)
+- Unmapped: 8 ⚠️ (v1.1 — will be resolved by roadmapper)
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after roadmap creation*
+*Last updated: 2026-02-16 after v1.1 milestone definition*
