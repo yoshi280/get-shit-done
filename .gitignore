@@ -16,10 +16,16 @@
 !.claude/hooks/**
 !.claude/get-shit-done/
 .claude/get-shit-done/*
+!.claude/get-shit-done/bin/
+!.claude/get-shit-done/bin/**
 !.claude/get-shit-done/dimensions/
 !.claude/get-shit-done/dimensions/**
+!.claude/get-shit-done/templates/
+!.claude/get-shit-done/templates/**
 !.claude/get-shit-done/workflows/
 !.claude/get-shit-done/workflows/**
+!.claude/get-shit-done/references/
+!.claude/get-shit-done/references/**
 !.claude/agents/
 !.claude/agents/**
 
