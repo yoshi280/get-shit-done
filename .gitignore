@@ -18,6 +18,10 @@
 .claude/get-shit-done/*
 !.claude/get-shit-done/dimensions/
 !.claude/get-shit-done/dimensions/**
+!.claude/get-shit-done/workflows/
+!.claude/get-shit-done/workflows/**
+!.claude/agents/
+!.claude/agents/**
 
 # OpenCode config
 !.config/
