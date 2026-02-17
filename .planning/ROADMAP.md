@@ -12,7 +12,7 @@ Transform GSD's fixed research/execution pipeline into a flexible, context-aware
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Selectable Research Dimensions + Observability** - Flexible, user-editable dimensions with usage tracking
+- [x] **Phase 1: Selectable Research Dimensions + Observability** - Flexible, user-editable dimensions with usage tracking (completed 2026-02-17)
 - [ ] **Phase 2: Idea Capture System** - Backlog file for bigger ideas beyond actionable todos
 - [ ] **Phase 3: Cross-Phase Memory and Context Awareness** - Persistent state and learning across phase boundaries
 - [ ] **Phase 4: Phase State Machine with Iteration** - Rollback capability and plan re-execution
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Selectable Research Dimensions + Observability | 0/3 | Planned | - |
+| 1. Selectable Research Dimensions + Observability | 0/3 | Complete    | 2026-02-17 |
 | 2. Idea Capture System | 0/2 | Not started | - |
 | 3. Cross-Phase Memory and Context Awareness | 0/3 | Not started | - |
 | 4. Phase State Machine with Iteration | 0/3 | Not started | - |
