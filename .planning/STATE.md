@@ -35,6 +35,15 @@ Progress: [██░░░░░░░░] 13%
 
 *Updated after each plan completion*
 
+## Cost Tracker
+
+**Total project cost:** $0.000 (estimated)
+**Last updated:** 2026-02-17
+
+| Phase | Dimensions Run | Input Tokens | Output Tokens | Cost (est.) |
+|-------|---------------|-------------|--------------|-------------|
+| - | - | - | - | - |
+
 ## Accumulated Context
 
 ### Decisions
