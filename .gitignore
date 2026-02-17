@@ -14,6 +14,10 @@
 !.claude/settings.local.json
 !.claude/hooks/
 !.claude/hooks/**
+!.claude/get-shit-done/
+.claude/get-shit-done/*
+!.claude/get-shit-done/dimensions/
+!.claude/get-shit-done/dimensions/**
 
 # OpenCode config
 !.config/
