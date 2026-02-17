@@ -1,263 +1,185 @@
-# Feature Research: Meta-Prompting Framework Features
+# Feature Research: GSD Multi-Runtime Parity (v1.1)
 
-**Domain:** Meta-prompting frameworks and agentic workflow orchestration systems
+**Domain:** Multi-runtime AI developer tool — bringing GSD workflow parity to Codex CLI and OpenCode
 **Researched:** 2026-02-16
-**Confidence:** MEDIUM-HIGH
+**Confidence:** HIGH for OpenCode gaps (sourced from codebase); LOW-MEDIUM for Codex CLI (training data + architecture inference)
+
+## Context: What "Parity" Means for GSD
+
+GSD's value comes from agent orchestration: parallel researchers, planning/checking revision loops, wave-based execution, post-execution verification. All of this runs through Claude Code's `Task` tool, which spawns fresh agents with independent 200k context windows.
+
+On OpenCode: install-level support exists (frontmatter conversion, path remapping, tool name mapping). The Task tool is available with `subagent_type="general"` for generic spawns. Named subagent types (`gsd-executor`, `gsd-planner`, `gsd-verifier`, etc.) are passed through unchanged — behavior on OpenCode is unverified.
+
+On Codex CLI: zero GSD support. Codex CLI uses OpenAI's model and has a different execution model (sandbox-based code execution, no Task-tool-equivalent for spawning parallel agents in fresh contexts).
+
+Full parity = the same agent orchestration quality, the same questioning flows, the same token observability, and explicit notification when something must degrade.
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete.
+Features users assume work when GSD is installed on a runtime. Missing any of these makes the runtime experience feel broken, not just degraded.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **State persistence across phases** | All modern frameworks (LangGraph, CrewAI, AutoGen) have checkpointing | MEDIUM | LangGraph uses checkpointers (InMemorySaver, SqliteSaver, PostgresSaver); critical for multi-turn conversations and recovery |
-| **Graph-based workflow visualization** | Industry standard since LangGraph popularized it; users expect to see workflow structure | MEDIUM | LangGraph represents workflows as nodes/edges; alternative is sequential/hierarchical like CrewAI |
-| **Atomic operation rollback** | Stateful systems need error recovery; transaction-based approaches are expected | HIGH | SagaLLM uses compensating transactions; rollback triggers on verification failure |
-| **Human-in-the-loop approval gates** | Required for compliance, safety, high-risk operations | MEDIUM | LangGraph uses `interrupt()`, CrewAI has `human_input`; essential for production deployments |
-| **Short-term memory (thread-level)** | Multi-turn conversations require context retention within a session | LOW | Raw context saved through checkpoint objects; basic capability |
-| **Progress tracking and observability** | Teams need to monitor workflow execution and debug failures | MEDIUM | State tracking across runs/tasks; execution traces; essential for production reliability |
-| **Configuration-based workflow definition** | Enable rapid iteration without code changes | LOW-MEDIUM | CrewAI uses YAML for declarative workflows; industry expects both declarative and programmatic APIs |
-| **Sequential task execution** | Basic workflow pattern; foundation for more complex patterns | LOW | All frameworks support this; CrewAI's default process type |
-| **Error handling and retry logic** | Production systems must handle failures gracefully | MEDIUM | Part of reliable workflow execution; includes escalation triggers |
-| **Tool/function calling integration** | Agents need to interact with external systems and APIs | LOW | Standard capability across all frameworks; protocol support (e.g., MCP) |
+| **Named subagent type routing on OpenCode** | GSD workflows spawn `gsd-executor`, `gsd-planner`, `gsd-verifier`, etc. by name. OpenCode only converts `general-purpose` → `general`; named types pass through unverified. If OpenCode doesn't resolve named agents, every `execute-phase`, `plan-phase`, and `verify-work` silently breaks. | MEDIUM | Audit which named types work, fix installer conversion or add `general` fallback with agent body inlined. Sourced from installer code analysis (HIGH confidence). |
+| **AskUserQuestion / interactive questioning flows** | Users expect `/gsd:new-project` questioning to work — the step-by-step discovery flow is GSD's first impression. OpenCode maps `AskUserQuestion` → `question` at install time. Codex CLI has no equivalent — the tool doesn't exist. | LOW (OpenCode), HIGH (Codex) | OpenCode conversion exists but needs validation. Codex CLI needs full fallback strategy — inline multi-choice markdown OR sequential text-based questions. |
+| **SlashCommand / workflow invocation across runtimes** | GSD auto-advances with `SlashCommand("/gsd:discuss-phase 1 --auto")`. OpenCode maps this to `skill`. Codex CLI: unknown. Without this, auto-advance chains break silently. | LOW (OpenCode), MEDIUM (Codex) | For Codex CLI, inline the target workflow content rather than invoking via SlashCommand. |
+| **Config path resolution for all runtimes** | Workflows hardcode `~/.claude/get-shit-done/...` paths. OpenCode installer replaces `~/.claude` → `~/.config/opencode`. Codex CLI has no install-time replacement — all path references are wrong. | MEDIUM | Codex CLI needs path substitution pass at install time. Add `~/.codex/` path target. Or switch workflows to use a runtime-resolved path variable. |
+| **gsd-tools.cjs availability on all runtimes** | Every workflow calls `node ~/.claude/get-shit-done/bin/gsd-tools.cjs`. Path is hardcoded. If not replaced at install time on Codex CLI, every `init` call fails silently. | LOW | Same problem as config path resolution. Install-time substitution or runtime detection via env var. |
+| **Runtime detection** | GSD needs to know which runtime it's in so it can route to correct paths, tool names, and fallback behaviors. Currently no detection exists — all workflows assume Claude Code conventions. | LOW | Detect via environment variable or config flag set at install time. Write to `.planning/config.json` as `runtime: "claude"|"opencode"|"codex"`. |
+| **Parallel research spawning on all runtimes** | `/gsd:new-project` spawns N researchers in parallel via `Task(..., run_in_background=true)`. If `run_in_background` isn't supported on a runtime, parallel spawning silently becomes sequential or fails entirely. | HIGH | Verify `run_in_background` behavior on OpenCode. For Codex CLI: sequential fallback with explicit notice. Don't silently drop parallel work. |
+| **Plan-checker revision loop on all runtimes** | `plan-phase` spawns planner → checker → planner (max 3 iterations). This requires Task tool to block until agent returns. If async/await semantics differ, loops either skip or loop forever. | MEDIUM | Verify Task blocking behavior on OpenCode with named agent types. Codex CLI needs inline revision logic as fallback. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but valuable.
+Features that make the multi-runtime experience excellent, not just functional.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Flexible/dynamic research dimensions** | Enables Claude to infer relevant investigation areas vs fixed structure | MEDIUM-HIGH | Current GSD uses fixed 4 dimensions; Claude's multi-agent research uses adaptive subagent planning |
-| **Phase iteration with rollback** | Allows rework without starting over; supports iterative refinement | HIGH | Requires sophisticated state management; checkpoints at phase boundaries; selective rollback |
-| **Cross-phase learning and awareness** | Agents learn from previous phases and apply insights to later work | HIGH | Memory Collection → Deployment phases; progressive RL for coordinating memory types; cutting-edge research area |
-| **Custom workflow templates** | Users define their own phase structures and dependencies | MEDIUM | CrewAI supports full customization via YAML/Python; enables domain-specific workflows |
-| **Idea capture system (todos + backlog)** | Captures emerging requirements during execution for later work | LOW-MEDIUM | Workflow as unit of delivery; backlog consists of workflows waiting automation |
-| **Self-evaluation and iterative improvement** | Agents self-review output and refine without manual intervention | MEDIUM-HIGH | CrewAI Flows support self-evaluation loops; reduces human review burden |
-| **Parallel subagent execution** | Decompose complex tasks and work in parallel vs sequential | MEDIUM | Claude's research system uses this; significant performance improvement for complex tasks |
-| **Markdown-native state representation** | Human-readable workflow state that's also version-controllable | LOW-MEDIUM | GSD's current strength; not common in industry (mostly YAML/Python/database) |
-| **Swarm coordination patterns** | Peer agents with emergent coordination vs hierarchical control | HIGH | Alternative to supervisor pattern; agents propose ideas and converge through rules |
-| **Multimodal memory** | Memory across text, structured data, images, etc. | HIGH | Emerging research frontier; complex integration challenges |
-| **Temporal workflow orchestration** | Production-grade reliability with pause/resume across process restarts | HIGH | Enterprise-level feature; Temporal integration provides this; overkill for many use cases |
+| **Runtime capability manifest** | A machine-readable file (`.planning/runtime-capabilities.json`) documenting what the current runtime supports: parallel spawning, named agents, interactive questions, background tasks. Every workflow reads this and adjusts behavior accordingly. Other multi-runtime tools (Aider, Continue) hard-code runtime branches — a capability manifest is more maintainable. | MEDIUM | Write once at install time or first run. Workflows check capabilities before using advanced features. |
+| **Explicit degradation notices** | When a workflow falls back from parallel → sequential, or from named agent → inline logic, it prints a visible notice: `[Codex] Parallel research unavailable — running 4 dimensions sequentially (~3x slower)`. Users understand the tradeoff instead of wondering why something seems slower. | LOW | Small addition to each fallback branch. High UX value. |
+| **Runtime-aware token budgeting** | Different runtimes use different models with different context windows and cost profiles. Codex CLI uses GPT-4o (128k context). OpenCode supports multiple providers. A runtime-aware token budget prevents context overflow on smaller-context models. | MEDIUM | Extend existing token observability (v1.0 feature) to be runtime-aware. Read context window size from runtime config. |
+| **Inline agent fallback** | When `subagent_type="gsd-executor"` can't be resolved by a runtime, automatically inline the agent's body into the Task prompt. This preserves agent behavior without requiring named agent registration. | HIGH | Requires the installer (or a runtime wrapper) to embed agent file content into workflow prompts at install time. Significant installer change. |
+| **Sequential execution mode as first-class config** | Make `parallelization: false` in `config.json` fully supported and well-tested for all runtimes, not just a fallback. Codex CLI users would set this and get a clean sequential experience. | LOW | Config already exists. Ensure all workflows respect it consistently. Add to Codex install wizard as default. |
+| **Cross-runtime test suite** | Automated validation that core GSD workflows produce the same artifacts on all supported runtimes. Missing artifacts or wrong file contents flag regressions. | HIGH | Would require test environment for each runtime. Likely out of scope for v1.1 but worth flagging as future work. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems.
+Features that seem helpful but make the multi-runtime experience worse.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Real-time everything** | Users assume "live" = better | Creates unnecessary complexity; most workflows don't need sub-second updates | Checkpoint-based state with configurable update intervals |
-| **Agents for deterministic tasks** | Consistency with agentic approach | Agentic reasoning via LLM comes at expense of simplicity and performance; unnecessary for fixed rules | Use conditional logic and rules-based systems for deterministic decisions |
-| **Over-engineered from day one** | Desire to build comprehensive solution upfront | Agent sprawl; more agents ≠ higher maturity; premature optimization | Start simple, progress incrementally with clear advancement triggers |
-| **Universal meta-prompting** | One prompt structure fits all use cases | Different domains need different structures; forces complexity where unnecessary | Domain-specific templates with optional customization |
-| **Unlimited context persistence** | Store everything forever for maximum context | Memory grows unbounded; retrieval becomes slow; cost escalates | Summarization + external memory stores; intelligent long-term retrieval |
-| **Full workflow automation without HITL** | Complete autonomy seems efficient | Breaks compliance requirements; loses human judgment for edge cases | Approval gates for high-risk operations; clear criteria for human escalation |
-| **Synchronous multi-agent coordination** | All agents working together seems collaborative | Creates bottlenecks; waiting on slowest agent | Async patterns with shared memory stores; message-based coordination |
-| **Too many tools for agents** | More capabilities = more powerful | Leads to confusion, reduces determinism, increases error rate | Minimize tool set; specialized agents with focused tool access |
+| **Silent fallback without notice** | "Don't break the workflow, just do the best you can" | Users can't tell if they're getting full GSD quality or a degraded version. Builds false confidence. They file bugs for behavior that is working as intended. | Always print a one-line notice when falling back. Make degradation visible. |
+| **Full feature parity on Codex CLI via workarounds** | "Support everything on every runtime" | Codex CLI's execution model is fundamentally different. Trying to emulate parallel agent spawning via sequential loops with fake parallelism adds complexity and breaks GSD's lean-orchestrator design principle. | Define an honest Codex CLI feature set. Implement it cleanly. Don't pretend it has Task-tool parity it doesn't have. |
+| **Runtime auto-detection via heuristics** | "Detect runtime at prompt-time without explicit config" | Heuristics break. Tool availability changes between runtime versions. A heuristic that worked in Codex v1.0 fails in v1.1. Results in hard-to-diagnose behavior. | Set `runtime` in `config.json` at install time. Explicit is reliable. |
+| **One unified workflow file for all runtimes** | "Fewer files to maintain" | A single file with `if runtime == claude` conditionals in markdown is unmaintainable. Markdown conditionals aren't a real language. | Install-time conversion (installer already does this for OpenCode). Maintain runtime-specific variants generated from a shared source. |
+| **Gemini CLI parity in v1.1** | "Do all three runtimes at once" | PROJECT.md explicitly defers Gemini to v1.2+. Gemini has a fundamentally different agent model (TOML files, auto-registered tools). Adding Gemini to v1.1 scope inflates complexity by 50% without proportional value. | Defer. The installer already handles Gemini frontmatter conversion. Validate separately after Codex + OpenCode are stable. |
 
 ## Feature Dependencies
 
 ```
-State Persistence
-    └──requires──> Checkpoint System
-                       └──enables──> Rollback
-                                         └──enables──> Phase Iteration
+Runtime Detection
+    └──required by──> Named Subagent Routing
+    └──required by──> Config Path Resolution
+    └──required by──> Runtime Capability Manifest
+    └──required by──> Explicit Degradation Notices
 
-Cross-Phase Learning
-    └──requires──> Memory Collection Phase
-    └──requires──> State Persistence
-    └──enhances──> Custom Workflows
+Named Subagent Routing
+    └──required by──> Plan-Checker Revision Loop
+    └──required by──> Execute-Phase Wave Execution
+    └──required by──> Verify-Phase Agent
 
-Flexible Research Dimensions
-    └──requires──> Dynamic Planning
-    └──enhances──> Parallel Subagent Execution
+Runtime Capability Manifest
+    └──enables──> Runtime-Aware Token Budgeting
+    └──enables──> Inline Agent Fallback
+    └──enhances──> Explicit Degradation Notices
 
-Human-in-the-Loop
-    └──requires──> State Persistence
-    └──requires──> Checkpoint System (pause/resume)
-    └──conflicts──> Full Automation
+Parallel Research Spawning
+    └──requires──> run_in_background support (runtime-dependent)
+    └──falls back to──> Sequential Execution Mode
 
-Custom Workflows
-    └──requires──> Configuration System
-    └──enhances──> Phase Iteration
-    └──enables──> Domain-Specific Templates
-
-Idea Capture
-    └──requires──> State Persistence
-    └──independent──> Core Workflow Execution
+AskUserQuestion Fallback
+    └──required by──> /gsd:new-project questioning flow
+    └──required by──> Dimension selection (v1.0 feature)
+    └──required by──> All interactive workflow gates
 ```
 
 ### Dependency Notes
 
-- **Phase Iteration requires Rollback requires Checkpointing:** You can't iterate on phases without the ability to save state and roll back to previous checkpoints
-- **Cross-Phase Learning requires Memory Collection:** Agents need a systematic way to collect and store learnings from each phase before they can apply them later
-- **Custom Workflows enable Phase Iteration:** Flexible workflow definitions make it easier to experiment with different phase structures
-- **Human-in-the-Loop conflicts with Full Automation:** These are opposite ends of the control spectrum; both have value but for different risk profiles
-- **Idea Capture is independent:** Can be added without affecting core workflow execution; low-risk addition
+- **Runtime Detection required by everything:** No other multi-runtime feature can work without knowing which runtime GSD is running in. This is Phase 1, item 1.
+- **Named subagent routing blocks execute-phase and plan-phase:** If OpenCode doesn't resolve named agent types, the two most important GSD workflows are broken. This is the highest-priority OpenCode gap.
+- **Inline agent fallback is a late-dependency feature:** It depends on runtime detection AND understanding which named agent types fail on which runtimes. Build after capability audit, not before.
+- **Parallel research depends on runtime capability manifest:** The manifest tells workflows whether to attempt parallel spawning or go sequential. Without the manifest, workflows would need per-runtime conditional logic hardcoded into every file.
 
 ## MVP Definition
 
-### Launch With (Milestone v1)
+### Launch With (v1.1)
 
-Minimum viable improvements to validate flexible research and iteration concepts.
+Minimum viable multi-runtime support — what's needed for OpenCode and Codex CLI to be usable, not just installable.
 
-- [ ] **Flexible research dimensions** — Core value proposition; enables Claude to infer relevant dimensions vs fixed structure
-- [ ] **User-editable research dimensions** — Allows refinement of Claude-inferred dimensions before execution
-- [ ] **Phase iteration (simple)** — Re-run single phase with modified inputs; validates iteration pattern
-- [ ] **Enhanced state persistence** — Extend current checkpoint system to support iteration tracking
-- [ ] **Basic idea capture** — Simple todo/backlog system for capturing emerging requirements during execution
+- [ ] **Runtime detection + config.json `runtime` field** — All other features depend on this. Write at install time. Read in every workflow that needs to branch. (LOW complexity, HIGH unlock value)
+- [ ] **Named subagent type audit on OpenCode** — Verify whether `gsd-executor`, `gsd-planner`, `gsd-verifier`, etc. work on OpenCode. Document which ones fail. Required before any fixes. (LOW complexity, HIGH diagnostic value)
+- [ ] **Named subagent type fix for OpenCode** — If audit shows failures, add installer conversion: `subagent_type="gsd-executor"` → `subagent_type="general"` with agent body inlined in prompt. (MEDIUM complexity)
+- [ ] **Codex CLI install support** — Add `--codex` flag to installer. Path substitution (`~/.claude` → `~/.codex` or wherever Codex stores config). Frontmatter conversion for tool names. (MEDIUM complexity)
+- [ ] **AskUserQuestion fallback for Codex CLI** — Codex CLI has no `question` tool. Fallback: print options as numbered list, expect numbered response, parse. Keeps questioning flow functional. (MEDIUM complexity)
+- [ ] **Explicit degradation notices** — Every fallback branch prints a one-liner. (LOW complexity, essential for user trust)
+- [ ] **Sequential execution mode validation** — Ensure `parallelization: false` in config.json works end-to-end on Codex CLI. This is the baseline execution model for a runtime without parallel Task spawning. (LOW complexity)
 
 ### Add After Validation (v1.x)
 
-Features to add once core iteration pattern is working.
+Features to add once v1.1 baseline is working and users are hitting the limits.
 
-- [ ] **Multi-phase rollback** — Roll back multiple phases and their dependencies; add after single-phase iteration works
-- [ ] **Cross-phase awareness** — Agents reference outputs from earlier phases; add when iteration is stable
-- [ ] **Workflow templates** — Pre-defined phase structures for common scenarios; add after custom workflows are validated
-- [ ] **Self-evaluation loops** — Agents self-review phase outputs; add after manual review process is established
-- [ ] **Parallel research execution** — Multiple research dimensions in parallel; add after sequential works reliably
+- [ ] **Runtime capability manifest** — Formalize the ad-hoc capability branches into a declarative manifest. Add when there are 3+ capability branches needing coordination. (MEDIUM complexity)
+- [ ] **Runtime-aware token budgeting** — Extend v1.0 token observability with context window awareness. Add when Codex CLI users report context overflow. (MEDIUM complexity)
+- [ ] **`run_in_background` validation on OpenCode** — Verify parallel research works on OpenCode. If it doesn't, implement sequential fallback with notice. (MEDIUM complexity, depends on having OpenCode test environment)
+- [ ] **Inline agent fallback** — Embed agent body into Task prompts as fallback. Add when named agent type fix (above) proves insufficient. (HIGH complexity)
 
 ### Future Consideration (v2+)
 
-Features to defer until product-market fit is established.
-
-- [ ] **Cross-phase learning** — Sophisticated memory system where agents learn and apply insights; HIGH complexity, research-level feature
-- [ ] **Swarm coordination** — Peer-based agent coordination; defer until hierarchical patterns are proven inadequate
-- [ ] **Multimodal memory** — Memory across different data types; cutting-edge research, not needed for markdown-based workflows
-- [ ] **Full Temporal integration** — Enterprise orchestration; massive scope increase, defer until enterprise customers demand it
+- [ ] **Cross-runtime test suite** — Automated artifact validation across runtimes. Requires test infrastructure investment that's out of scope until multi-runtime stability is proven. (HIGH complexity)
+- [ ] **Gemini CLI parity** — Explicitly deferred to v1.2+ per PROJECT.md. Gemini has unique TOML/auto-register model that needs its own design pass.
+- [ ] **Runtime-specific model profiles** — Different default model selections per runtime based on what's available. Useful once usage data shows per-runtime cost patterns.
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority | Dependencies |
-|---------|------------|---------------------|----------|--------------|
-| Flexible research dimensions | HIGH | MEDIUM | P1 | Dynamic planning |
-| User-editable dimensions | HIGH | LOW | P1 | None |
-| Phase iteration (simple) | HIGH | MEDIUM | P1 | Enhanced checkpointing |
-| Enhanced state persistence | HIGH | MEDIUM | P1 | Current checkpoint system |
-| Basic idea capture | MEDIUM | LOW | P1 | State persistence |
-| Multi-phase rollback | HIGH | HIGH | P2 | Phase iteration |
-| Cross-phase awareness | HIGH | MEDIUM | P2 | State persistence |
-| Workflow templates | MEDIUM | LOW-MEDIUM | P2 | Custom workflows |
-| Self-evaluation loops | MEDIUM | MEDIUM-HIGH | P2 | Phase iteration |
-| Parallel research execution | MEDIUM | MEDIUM | P2 | Flexible dimensions |
-| Cross-phase learning | HIGH | HIGH | P3 | Memory systems |
-| Swarm coordination | LOW | HIGH | P3 | Multi-agent infrastructure |
-| Multimodal memory | LOW | HIGH | P3 | Memory systems |
-| Temporal integration | LOW | HIGH | P3 | Enterprise infrastructure |
+| Feature | User Value | Implementation Cost | Priority | v1.0 Dependency |
+|---------|------------|---------------------|----------|-----------------|
+| Runtime detection | HIGH | LOW | P1 | None |
+| Named subagent audit (OpenCode) | HIGH | LOW | P1 | None |
+| Named subagent fix (OpenCode) | HIGH | MEDIUM | P1 | Audit results |
+| Codex CLI install support | HIGH | MEDIUM | P1 | None |
+| AskUserQuestion fallback (Codex) | HIGH | MEDIUM | P1 | Codex install |
+| Explicit degradation notices | HIGH | LOW | P1 | Runtime detection |
+| Sequential mode validation | MEDIUM | LOW | P1 | Codex install |
+| SlashCommand fallback (Codex) | MEDIUM | MEDIUM | P2 | Codex install |
+| Runtime capability manifest | MEDIUM | MEDIUM | P2 | All P1 items |
+| `run_in_background` audit (OpenCode) | MEDIUM | LOW | P2 | OpenCode environment |
+| Runtime-aware token budgeting | LOW | MEDIUM | P2 | v1.0 observability |
+| Inline agent fallback | MEDIUM | HIGH | P2 | Capability manifest |
+| Cross-runtime test suite | HIGH | HIGH | P3 | Stable multi-runtime |
+| Gemini CLI parity | MEDIUM | HIGH | P3 | None (deferred) |
 
 **Priority key:**
-- P1: Must have for launch - validates core flexible research + iteration concept
-- P2: Should have - enhances core capabilities once pattern is proven
-- P3: Nice to have - advanced features for future differentiation
+- P1: Must have for v1.1 — makes runtime actually usable
+- P2: Should have — makes it excellent, add when P1 is stable
+- P3: Future consideration — deferred per PROJECT.md or out of scope
 
-## Competitor Feature Analysis
+## How Other Multi-Runtime AI Tools Handle This
 
-| Feature | LangGraph | CrewAI | AutoGen | GSD Current | GSD Target |
-|---------|-----------|--------|---------|-------------|------------|
-| State persistence | Checkpointers (multiple backends) | State management | Conversation history | Git checkpoints | Enhanced git checkpoints |
-| Workflow definition | Graph-based (Python) | YAML + Python | Conversational | Markdown phases | Markdown + dynamic |
-| Iteration support | Time-travel debugging | Flows with loops | Chat continuity | Linear only | Phase iteration |
-| Memory systems | Short-term (thread) | Context + memory | Message history | File-based state | Cross-phase awareness |
-| Human-in-the-loop | `interrupt()` function | `human_input` | Human agent | Manual review | Approval gates |
-| Customization | Full Python control | YAML templates | Conversational patterns | Fixed 4 dimensions | Flexible dimensions |
-| Rollback | Checkpoint-based | Process control | Conversation reset | Git revert | Multi-phase rollback |
-| Parallel execution | Native support | Sequential/Hierarchical | Multi-agent chat | Sequential only | Parallel research |
+**Aider** (multi-provider, single execution model): Aider side-steps the problem by not having an agent orchestration layer. It runs the model directly and doesn't spawn subagents. This makes multi-runtime support trivial (just swap model API) but also means it can't do parallel work. GSD's approach is more powerful but harder to make portable.
 
-## Implementation Complexity Assessment
+**Continue.dev** (VS Code extension, multiple LLM backends): Uses provider abstraction at the API level, not at the agent orchestration level. Each provider has a standardized interface for chat + context. No subagent spawning. Same limitation as Aider — simpler to port but less capable for autonomous work.
 
-### Low Complexity (1-3 days)
-- User-editable research dimensions (markdown editing)
-- Basic idea capture (markdown TODO list)
-- Workflow templates (copy existing structure)
+**The lesson from both:** Tools that sidestep subagent spawning are easier to port but fundamentally less capable. GSD should not sacrifice its orchestration model to achieve portability. Instead, it should define a capability tier system: Tier 1 (full Task-tool support = Claude Code), Tier 2 (partial = OpenCode), Tier 3 (sequential only = Codex CLI) — and document what each tier provides.
 
-### Medium Complexity (1-2 weeks)
-- Flexible research dimensions (Claude planning + inference)
-- Phase iteration simple (extend checkpoint system)
-- Enhanced state persistence (track iteration history)
-- Cross-phase awareness (reference previous outputs)
-- Parallel research execution (spawn multiple researchers)
+## Competitor Runtime Capability Comparison
 
-### High Complexity (3-6 weeks)
-- Multi-phase rollback (dependency graph + state restoration)
-- Self-evaluation loops (feedback + iteration control)
-- Cross-phase learning (memory collection + application)
-- Swarm coordination (peer communication patterns)
+| Capability | Claude Code | OpenCode | Codex CLI |
+|-----------|-------------|----------|-----------|
+| Task tool (agent spawn) | Native | `general` subagent (verified), named types (unverified) | Not available (LOW confidence) |
+| AskUserQuestion | Native | `question` (installer converts) | Not available (LOW confidence) |
+| SlashCommand | Native | `skill` (installer converts) | Not available (LOW confidence) |
+| run_in_background | Native | Unverified (MEDIUM confidence) | Not available (LOW confidence) |
+| Named agent routing | Native | Unverified (MEDIUM confidence) | Not available (LOW confidence) |
+| MCP tools | Native | Supported | Limited (LOW confidence) |
+| Config directory | `~/.claude/` | `~/.config/opencode/` | `~/.codex/` (LOW confidence) |
+| Model context window | 200k | Provider-dependent | 128k (GPT-4o, LOW confidence) |
+| Current GSD support | Full | Install-level | None |
 
-### Very High Complexity (months)
-- Temporal integration (external dependency, infrastructure)
-- Multimodal memory (research-level problem)
-- Advanced learning systems (RL-based optimization)
-
-## Current GSD Strengths to Preserve
-
-1. **Markdown-native representation** - Human-readable, version-controllable, simple
-2. **Git-based checkpoints** - Atomic commits, natural rollback, audit trail
-3. **CLI-based workflow** - Terminal-native, scriptable, no GUI overhead
-4. **Phase-based structure** - Clear milestones, manageable scope
-5. **Explicit orchestration** - Deterministic flow, predictable behavior
-
-## Risks and Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Over-engineering iteration | Complexity kills usability | Start with single-phase iteration; expand incrementally |
-| State management grows unbounded | Performance degradation | Implement summarization; archive old states |
-| Flexible dimensions too flexible | Unpredictable results | Provide templates; validation rules; user approval |
-| Cross-phase dependencies become tangled | Rollback breaks workflows | Explicit dependency tracking; validation before rollback |
-| HITL gates slow down workflow | Reduced efficiency | Make gates optional; clear criteria for when needed |
+**Confidence notes:** All Codex CLI entries are LOW confidence from training data (cutoff January 2025). OpenCode named agent routing is MEDIUM confidence — installer converts `general-purpose` → `general` but named types like `gsd-executor` are passed through unchanged and OpenCode behavior is undocumented in the codebase. Capability audit (P1 feature above) is needed to replace these LOW/MEDIUM entries with verified data.
 
 ## Sources
 
-### Meta-Prompting and Orchestration
-- [Agentic Workflows in 2026: The ultimate guide](https://www.vellum.ai/blog/agentic-workflows-emerging-architectures-and-design-patterns)
-- [Top AI Agentic Workflow Patterns Enterprises Should Use in 2026](https://dextralabs.com/blog/ai-agentic-workflow-patterns-for-enterprises/)
-- [The 2026 Guide to Agentic Workflow Architectures](https://www.stack-ai.com/blog/the-2026-guide-to-agentic-workflow-architectures)
-- [Top 10+ Agentic Orchestration Frameworks & Tools in 2026](https://aimultiple.com/agentic-orchestration)
-- [Meta Prompting: Use LLMs to Optimize Prompts for AI Apps & Agents](https://www.comet.com/site/blog/meta-prompting/)
-
-### Multi-Agent Frameworks
-- [A Detailed Comparison of Top 6 AI Agent Frameworks in 2026](https://www.turing.com/resources/ai-agent-frameworks)
-- [LangGraph: Multi-Agent Workflows](https://blog.langchain.com/langgraph-multi-agent-workflows/)
-- [Agent Orchestration 2026: LangGraph, CrewAI & AutoGen Guide](https://iterathon.tech/blog/ai-agent-orchestration-frameworks-2026)
-- [AutoGen vs LangGraph: Comparing Multi-Agent AI Frameworks](https://www.truefoundry.com/blog/autogen-vs-langgraph)
-
-### State Management and Checkpointing
-- [Stateful Graph Workflows - Agentic Design](https://agentic-design.ai/patterns/workflow-orchestration/stateful-graph-workflows)
-- [Checkpointing and Resuming Workflows - Microsoft Learn](https://learn.microsoft.com/en-us/agent-framework/tutorials/workflows/checkpointing-and-resuming)
-- [SagaLLM: Context Management, Validation, and Transaction](https://www.vldb.org/pvldb/vol18/p4874-chang.pdf)
-- [Mastering LangGraph Checkpointing: Best Practices for 2025](https://sparkco.ai/blog/mastering-langgraph-checkpointing-best-practices-for-2025)
-- [Mastering LangGraph State Management in 2025](https://sparkco.ai/blog/mastering-langgraph-state-management-in-2025)
-
-### Memory and Context Persistence
-- [What is agentic AI: A comprehensive 2026 guide](https://www.tiledb.com/blog/what-is-agentic-ai)
-- [2026 data predictions: Scaling AI agents via contextual intelligence](https://siliconangle.com/2026/01/18/2026-data-predictions-scaling-ai-agents-via-contextual-intelligence/)
-- [Memory for AI Agents: A New Paradigm of Context Engineering](https://thenewstack.io/memory-for-ai-agents-a-new-paradigm-of-context-engineering/)
-- [Agentic Memory: Learning Unified Long-Term and Short-Term Memory Management](https://arxiv.org/html/2601.01885v1)
-- [Memory in the Age of AI Agents](https://arxiv.org/abs/2512.13564)
-
-### CrewAI Features
-- [CrewAI: The Revolutionary Multi-Agent Framework](https://www.blog.brightcoding.dev/2026/02/13/crewai-the-revolutionary-multi-agent-framework)
-- [CrewAI: A Practical Guide to Role-Based Agent Orchestration](https://www.digitalocean.com/community/tutorials/crewai-crash-course-role-based-agent-orchestration)
-- [Processes - CrewAI](https://docs.crewai.com/en/concepts/processes)
-- [CrewAI Flows](https://www.crewai.com/crewai-flows)
-
-### Human-in-the-Loop Patterns
-- [Human-in-the-Loop Approval Framework](https://github.com/nibzard/awesome-agentic-patterns/blob/main/patterns/human-in-loop-approval-framework.md)
-- [Human-in-the-Loop for AI Agents: Best Practices, Frameworks, Use Cases](https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo)
-- [Human-in-the-Loop with AG-UI - Microsoft Learn](https://learn.microsoft.com/en-us/agent-framework/integrations/ag-ui/human-in-the-loop)
-
-### Claude and Enterprise Adoption
-- [How enterprises are building AI agents in 2026](https://claude.com/blog/how-enterprises-are-building-ai-agents-in-2026)
-- [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)
-- [Building effective agents](https://www.anthropic.com/research/building-effective-agents)
-
-### Anti-Patterns and Best Practices
-- [From Prompts to Production: A Playbook for Agentic Development](https://www.infoq.com/articles/prompts-to-production-playbook-for-agentic-development/)
-- [Agentic AI Patterns and Anti-Patterns](https://speakerdeck.com/glaforge/agentic-ai-patterns-and-anti-patterns)
-- [My LLM coding workflow going into 2026](https://addyo.substack.com/p/my-llm-coding-workflow-going-into)
+- GSD installer source code: `/Users/thelorax/get-shit-done/bin/install.js` — lines 307-482 (tool name mappings, frontmatter conversion, subagent type conversion) — HIGH confidence
+- GSD workflow files: `/Users/thelorax/.claude/get-shit-done/workflows/` — subagent_type usage audit — HIGH confidence
+- GSD CHANGELOG.md: runtime support history (OpenCode support added v1.19, named subagent type conversion noted, `run_in_background` not mentioned) — HIGH confidence
+- GSD INTEGRATIONS.md: config directory locations per runtime — HIGH confidence
+- Aider architecture: training knowledge (multi-provider, no subagent spawning) — MEDIUM confidence (pre-Jan 2025 knowledge)
+- Continue.dev architecture: training knowledge — MEDIUM confidence (pre-Jan 2025 knowledge)
+- Codex CLI capabilities: training knowledge (OpenAI Codex CLI released 2025, sandbox-based model) — LOW confidence, needs verification against actual Codex CLI docs
 
 ---
-*Feature research for: Meta-prompting framework improvements for GSD*
+*Feature research for: GSD v1.1 — Codex CLI and OpenCode runtime parity*
 *Researched: 2026-02-16*
-*Confidence: MEDIUM-HIGH (verified with multiple current sources, some research frontiers have lower confidence)*
+*Confidence: HIGH for OpenCode gaps (from codebase); LOW for Codex CLI specifics (training data)*

@@ -1,678 +1,592 @@
 # Architecture Research
 
-**Domain:** Meta-prompting / Agentic Workflow Frameworks
+**Domain:** Multi-runtime AI agent orchestration — GSD v1.1 Codex CLI + OpenCode Support
 **Researched:** 2026-02-16
-**Confidence:** HIGH
+**Confidence:** MEDIUM (runtime-specific details based on training data + installer code inspection; Codex CLI and OpenCode evolve rapidly — validate before implementing)
 
-## Standard Architecture
+---
 
-### System Overview
+## Current Architecture: What Exists Today
 
-Modern agentic workflow systems separate concerns across distinct layers:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Command Layer                           │
-│  (User interface: CLI commands, workflow invocation)         │
-├─────────────────────────────────────────────────────────────┤
-│                   Orchestration Layer                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ Coordinator  │  │ State Machine│  │   Router     │      │
-│  │  (Workflow   │  │ (Transitions)│  │ (Task Dispatch)     │
-│  │   Control)   │  │              │  │              │      │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
-│         │                 │                 │               │
-├─────────┴─────────────────┴─────────────────┴───────────────┤
-│                      Agent Layer                             │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-│  │Planner  │  │Executor │  │Research │  │Verifier │        │
-│  │ Agent   │  │ Agent   │  │  Agent  │  │  Agent  │        │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘        │
-│       │            │            │            │              │
-├───────┴────────────┴────────────┴────────────┴──────────────┤
-│                   Workflow Definitions Layer                 │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Task Breakdown, Dependencies, Compensation Logic    │   │
-│  └──────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│                      Memory Layer                            │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
-│  │ State    │  │ Context  │  │Episodic  │                  │
-│  │ Store    │  │ History  │  │ Memory   │                  │
-│  └──────────┘  └──────────┘  └──────────┘                  │
-├─────────────────────────────────────────────────────────────┤
-│                      Tools Layer                             │
-│  (Filesystem, Git, External APIs, Code Execution)           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **Command Layer** | Entry point, argument parsing, workflow selection | CLI handlers that parse user intent and route to orchestrators |
-| **Coordinator** | Breaks down requests into tasks, delegates to agents | Central controller managing workflow execution (orchestration pattern) |
-| **State Machine** | Tracks phase transitions, manages state lifecycle | Finite state machine with defined states, transitions, and actions |
-| **Router** | Dynamic task dispatch based on context | Pattern matching on task type, context size, agent availability |
-| **Agent Layer** | Specialized task execution (planning, coding, research, verification) | Individual agents with focused prompts and tools |
-| **Workflow Definitions** | Declarative task sequences, dependencies, rollback logic | DSL or structured data (YAML/JSON/Markdown) defining steps |
-| **State Store** | Persistent state across phases | Files (STATE.md, config.json) or databases tracking current position |
-| **Context History** | Accumulates interaction traces for continuity | Append-only log of prompts, responses, tool outputs |
-| **Episodic Memory** | Cross-phase learning, pattern recognition | Structured summaries of past phases (SUMMARY.md files) |
-| **Tools Layer** | Execution primitives for agents | File I/O, shell commands, git operations, API calls |
-
-## Recommended Project Structure
-
-GSD-compatible structure (zero external dependencies, markdown-based):
+GSD is a layered agent-orchestrator system built on Claude Code's execution model. The architecture has seven layers:
 
 ```
-.claude/
-├── get-shit-done/
-│   ├── bin/
-│   │   └── gsd-tools.cjs         # Centralized atomic operations
-│   ├── agents/                    # Agent definitions (markdown)
-│   │   ├── gsd-planner.md
-│   │   ├── gsd-executor.md
-│   │   ├── gsd-researcher.md
-│   │   └── gsd-verifier.md
-│   ├── workflows/                 # Orchestrator layer
-│   │   ├── plan-phase.md
-│   │   ├── execute-phase.md
-│   │   └── verify-work.md
-│   ├── references/                # Shared knowledge
-│   │   ├── model-profiles.md
-│   │   ├── state-management.md
-│   │   └── workflow-patterns.md
-│   └── templates/                 # Artifact templates
-│       ├── PLAN.md
-│       ├── SUMMARY.md
-│       └── VERIFICATION.md
-
-.planning/                          # State layer (per-project)
-├── config.json                     # Configuration
-├── STATE.md                        # Current position, context
-├── PROJECT.md                      # Project definition
-├── ROADMAP.md                      # Phase definitions
-├── phases/                         # Phase artifacts
-│   ├── 1-foundation/
-│   │   ├── plans/
-│   │   │   ├── 1-PLAN.md
-│   │   │   └── 1-SUMMARY.md
-│   │   └── verification/
-│   │       └── VERIFICATION.md
-│   └── 2-features/
-└── research/                       # Research artifacts
-    ├── SUMMARY.md
-    ├── STACK.md
-    ├── FEATURES.md
-    ├── ARCHITECTURE.md
-    └── PITFALLS.md
+┌─────────────────────────────────────────────────────────────────┐
+│  Command Layer                                                   │
+│  ~/.claude/commands/gsd/*.md  (Claude Code /gsd: namespace)     │
+│  ~/.config/opencode/command/gsd-*.md  (OpenCode /gsd- namespace)│
+├─────────────────────────────────────────────────────────────────┤
+│  Orchestrator Layer                                             │
+│  ~/.claude/get-shit-done/workflows/*.md                         │
+│  Reads config, spawns agents via Task tool, manages state       │
+├─────────────────────────────────────────────────────────────────┤
+│  Agent Layer                                                    │
+│  ~/.claude/agents/gsd-*.md  (Claude Code native)               │
+│  Specialized work: planning, execution, research, verification  │
+├─────────────────────────────────────────────────────────────────┤
+│  State Tool Layer                                               │
+│  gsd-tools.cjs  (zero-dep Node.js CLI)                         │
+│  All state mutations, commits, model resolution, phase ops      │
+├─────────────────────────────────────────────────────────────────┤
+│  State Layer                                                    │
+│  .planning/  (per-project)                                      │
+│  STATE.md, ROADMAP.md, config.json, phase artifacts             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Structure Rationale
+The **critical architectural dependency** on Claude Code: the `Task` tool. Every orchestrator uses it to spawn subagents:
 
-- **Separation of system vs. project state**: System files (~/.claude/) are version-controlled in GSD repo; project files (.planning/) are per-project
-- **Markdown as DSL**: Human-readable, git-friendly, no parser dependencies
-- **Flat agent namespace**: All agents in one directory, loaded by name
-- **Workflows as markdown**: Orchestrators are markdown files with embedded tool calls
-- **Atomic operations in single JS file**: gsd-tools.cjs centralizes state mutations, git operations, config parsing (no npm dependencies)
+```
+Task(
+  subagent_type="gsd-executor",
+  model="sonnet",
+  prompt="...",
+  description="..."
+)
+```
+
+This call is Claude Code's mechanism for spawning isolated agent contexts with fresh 200k token windows. It is the backbone of:
+- Parallel researcher spawning (N researchers for N dimensions)
+- Wave-based plan execution (multiple executors per wave)
+- Planner → plan-checker revision loops
+- Roadmapper creation and revision
+
+**OpenCode and Codex CLI do not have a direct equivalent.**
+
+---
+
+## The v1.1 Gap Analysis
+
+### What OpenCode Currently Has (Install-Level)
+
+OpenCode is already supported at installation time via `bin/install.js`. The installer:
+- Flattens command namespace: `commands/gsd/plan.md` → `command/gsd-plan.md`
+- Converts frontmatter: `allowed-tools: [Read, Write]` → `tools: { read: true, write: true }`
+- Maps tool names: uppercase → lowercase (`Read` → `read`, `Bash` → `bash`)
+- Maps `AskUserQuestion` → `question`
+- Maps `skill` invocation for command-to-command calls
+- Creates `opencode.json` for permission settings
+- Respects `XDG_CONFIG_HOME` for config directory
+
+**What OpenCode does NOT currently have:**
+- Task tool (no subagent spawning)
+- Model parameter selection per spawn (no `model=` on Task)
+- Native parallel execution of sub-contexts
+- `subagent_type` agent routing
+
+The existing support is **install parity, not workflow parity**. A user on OpenCode can invoke `/gsd-plan-phase` but when the workflow reaches `Task(subagent_type="gsd-planner", ...)`, it fails silently or errors. The entire wave-based execution model is non-functional.
+
+### What Codex CLI Has (From Training Data — LOW Confidence, Verify)
+
+Codex CLI (OpenAI's terminal agent) uses:
+- Markdown files for system prompts and context injection
+- Tool calling via OpenAI's function calling API
+- No native subagent spawning mechanism equivalent to Claude Code's Task tool
+- No `subagent_type` routing
+- Different tool names and invocation patterns than Claude Code
+- Agent definitions use a different frontmatter schema
+
+GSD has **zero Codex CLI support today**. No install target, no command format, no tool name mapping.
+
+---
+
+## The Core Problem: Task Tool Abstraction Gap
+
+The Task tool provides:
+1. **Isolated context** — subagent gets a fresh 200k window, preventing orchestrator context bleed
+2. **Model selection** — `model="sonnet"` lets orchestrator route work to appropriate model
+3. **Blocking execution** — orchestrator awaits completion before proceeding
+4. **Parallel fan-out** — multiple Task calls in parallel execute concurrently
+
+For non-Claude runtimes, GSD needs a fallback pattern for each of these properties.
+
+### What "Parity" Actually Means Per Runtime
+
+| Capability | Claude Code | OpenCode | Codex CLI |
+|------------|-------------|----------|-----------|
+| Slash commands | `/gsd:plan-phase` | `/gsd-plan-phase` | Unknown — needs verification |
+| Subagent spawn | `Task(subagent_type=...)` | No equivalent | No equivalent |
+| Parallel execution | Task fan-out | Not available | Not available |
+| Model selection | `model="sonnet"` | Provider-defined | OpenAI model routing |
+| Tool names | PascalCase | lowercase | Unknown |
+| Agent files | `agents/*.md` | Command format | Unknown |
+| Interactive prompts | `AskUserQuestion` | `question` | Unknown |
+| Config location | `~/.claude/` | `~/.config/opencode/` | Unknown |
+
+---
+
+## Recommended Architecture: Runtime Adapter Pattern
+
+### Design Decision: Shared Workflows, Runtime-Specific Spawning
+
+**Recommendation:** Keep all workflow logic in shared files. Add a thin runtime detection + adapter layer that transforms Task calls into runtime-appropriate equivalents.
+
+This is the minimal-change approach. It avoids duplicating workflow files per runtime (which would create a maintenance nightmare as workflows evolve) while enabling each runtime to execute what it can.
+
+**Rejected alternative:** Runtime-specific workflow files (e.g., `execute-phase-opencode.md`). Reason: Workflows are 200-500 lines each. Maintaining 3 copies of 30+ workflow files for 3 runtimes means 10x maintenance burden for every future GSD improvement.
+
+### Component 1: Runtime Detection
+
+Detection must happen at the earliest possible moment — in `gsd-tools.cjs init` commands, before any workflow step runs.
+
+**Detection strategy (layered, first match wins):**
+
+```
+1. config.json "runtime" field (explicit user override)
+   ↓ not set
+2. CLAUDE_DESKTOP_ENABLED, CLAUDE_CODE_VERSION env vars → "claude-code"
+   ↓ not set
+3. OPENCODE_VERSION, OPENCODE_CONFIG_DIR env vars → "opencode"
+   ↓ not set
+4. Check process.env for Codex-specific vars (verify what Codex sets)
+   ↓ not set
+5. Filesystem heuristics:
+   - ~/.claude/ exists AND process loaded from claude → "claude-code"
+   - ~/.config/opencode/ exists → "opencode" (weak signal, cross-check)
+   ↓ inconclusive
+6. Default: "claude-code" (preserves backward compatibility)
+```
+
+**Output from `gsd-tools.cjs init`:** Add `runtime` field to all init JSON payloads. Workflows read it and branch accordingly.
+
+**New config.json field:**
+```json
+{
+  "runtime": "claude-code"  // | "opencode" | "codex-cli" | "auto"
+}
+```
+
+`"auto"` (default) triggers heuristic detection. Explicit values override. This also lets users manually override if detection fails.
+
+**Integration point:** `loadConfig()` in `gsd-tools.cjs` (line ~164). Add `runtime` field resolution alongside `model_profile`, `commit_docs`, etc.
+
+### Component 2: Spawn Adapter — The Key Gap
+
+All workflows that use `Task(...)` need to route through an adapter pattern. The adapter lives in the **workflow markdown prose**, not in gsd-tools.cjs (since it involves LLM behavior, not Node.js computation).
+
+**Pattern: Conditional spawn block in workflow prose:**
+
+```markdown
+## Spawn Researcher
+
+**If runtime is "claude-code":**
+Use Task tool:
+Task(
+  subagent_type="gsd-phase-researcher",
+  model="{researcher_model}",
+  prompt="...",
+  description="Phase research"
+)
+
+**If runtime is "opencode" or "codex-cli" (no Task tool):**
+Execute the researcher role inline:
+- Read /path/to/gsd-phase-researcher.md for your role instructions
+- Execute the research inline following those instructions
+- Write output to {research_path}
+```
+
+This is the **inline fallback pattern**: when Task is unavailable, the orchestrator itself takes on the agent role, reading the agent's instruction file and executing it in the same context window.
+
+**Tradeoffs of inline fallback:**
+- Pro: Works on any runtime with zero additional tooling
+- Pro: No new files, no new infrastructure
+- Con: Consumes orchestrator context window (no isolation)
+- Con: Sequential-only (no parallel fan-out)
+- Con: No model routing (runs at whatever model the orchestrator is on)
+- Con: Context bleed — prior orchestrator state is visible to "agent"
+
+For v1.1, these tradeoffs are acceptable. Inline fallback gets to working parity. Parallel execution and model routing are enhancement opportunities for v1.2+.
+
+### Component 3: Parallelization Flag Already Handles Sequential Fallback
+
+GSD already has a `parallelization` flag in `config.json`. When `false`, wave execution is sequential. This flag serves as the primary mechanism for degraded-mode execution on non-Claude runtimes.
+
+**Recommended behavior:** When runtime is "opencode" or "codex-cli", auto-set effective parallelization to `false` regardless of config. Workflows that currently read `PARALLELIZATION` from init will naturally serialize.
+
+The existing flag is already checked in `execute-phase.md`:
+> "When `parallelization` is false, plans within a wave execute sequentially."
+
+This means sequential execution already works today — the gap is that Task calls still fail even in sequential mode on non-Claude runtimes. The fix is the inline fallback, not changing the parallelization logic.
+
+### Component 4: Model Routing Fallback
+
+`gsd-tools.cjs resolveModelInternal()` maps agent types to models (opus/sonnet/haiku). For Claude Code, this resolves to actual Claude model IDs.
+
+For OpenCode and Codex CLI, model IDs are provider-specific. The resolution table needs runtime-aware model name mapping.
+
+**New config structure:**
+```json
+{
+  "model_profile": "balanced",
+  "model_overrides": {
+    "gsd-executor": "gpt-4o",
+    "gsd-planner": "gpt-4o",
+    "gsd-phase-researcher": "gpt-4o-mini"
+  }
+}
+```
+
+`model_overrides` already exists in gsd-tools.cjs (line ~4087). The gap is documentation and a default model table for non-Anthropic providers.
+
+**Integration point:** `resolveModelInternal()` in gsd-tools.cjs. Add a `runtime`-aware default model table alongside `MODEL_PROFILES`.
+
+---
+
+## System Overview: v1.1 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Command Layer  (runtime-specific install)                      │
+│  Claude Code: ~/.claude/commands/gsd/*.md                       │
+│  OpenCode:    ~/.config/opencode/command/gsd-*.md               │
+│  Codex CLI:   [new: needs format research — see gaps]           │
+├─────────────────────────────────────────────────────────────────┤
+│  Runtime Detection  (NEW in gsd-tools.cjs + config.json)       │
+│  Detects: claude-code | opencode | codex-cli                    │
+│  Outputs: runtime field in all init JSON payloads               │
+├─────────────────────────────────────────────────────────────────┤
+│  Orchestrator Layer  (MODIFIED: conditional spawn blocks)       │
+│  Shared workflow files with runtime-conditional Task vs inline  │
+│  ~30 workflow files, ~5 workflows need Task changes             │
+├─────────────────────────────────────────────────────────────────┤
+│  Spawn Adapter  (NEW: in workflow prose)                        │
+│  Claude Code: Task(subagent_type=..., model=..., prompt=...)    │
+│  OpenCode/Codex: Inline execution with agent file read          │
+├─────────────────────────────────────────────────────────────────┤
+│  Agent Layer  (UNCHANGED for Claude Code)                       │
+│  ~/.claude/agents/gsd-*.md  (existing)                          │
+│  [New: OpenCode/Codex agent format if needed — see gaps]        │
+├─────────────────────────────────────────────────────────────────┤
+│  State Tool Layer  (MODIFIED: runtime field in init output)     │
+│  gsd-tools.cjs — add runtime detection + model table           │
+├─────────────────────────────────────────────────────────────────┤
+│  State Layer  (UNCHANGED)                                       │
+│  .planning/ directory — runtime-independent                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Component Boundaries
+
+| Component | Responsibility | Location | Status |
+|-----------|---------------|----------|--------|
+| Runtime Detector | Identify which CLI is running | gsd-tools.cjs `loadConfig()` | NEW |
+| Init JSON Runtime Field | Surface runtime to workflows | gsd-tools.cjs `init *` commands | MODIFIED |
+| Spawn Adapter | Task → inline fallback | Workflow markdown prose | MODIFIED (5 workflows) |
+| Model Routing Table | Map agent types to non-Anthropic models | gsd-tools.cjs `MODEL_PROFILES` | MODIFIED |
+| Codex CLI Installer | Install GSD for Codex | bin/install.js | NEW section |
+| Codex Command Format | Convert commands for Codex | bin/install.js converter fn | NEW |
+| Tool Name Mapper | Map Claude tool names to Codex names | bin/install.js | NEW |
+| OpenCode Parity | Fix existing OpenCode gaps | Workflow conditional blocks | MODIFIED |
+
+---
+
+## Specific Files Requiring Changes
+
+### Modified Files
+
+**`gsd-tools.cjs`**
+- `loadConfig()`: Add `runtime` field (detection logic)
+- `MODEL_PROFILES`: Add non-Claude model defaults per runtime
+- All `init *` command handlers: Add `runtime` to returned JSON
+- Approximately 20-30 lines of new code
+
+**Workflows with Task calls (5 files):**
+- `workflows/new-project.md` — researcher spawn (lines ~601-655), synthesizer spawn, roadmapper spawn
+- `workflows/plan-phase.md` — researcher spawn (line ~237), planner spawn (line ~370), plan-checker spawn (line ~426)
+- `workflows/execute-phase.md` — executor spawn (line ~103), verifier spawn (line ~299)
+- `workflows/new-milestone.md` — similar spawns to new-project
+- `workflows/research-phase.md` — researcher spawns
+
+Each needs: read `runtime` from init JSON → conditional spawn block.
+
+**`bin/install.js`**
+- New `installCodexCLI()` function (or extend existing runtime installer)
+- New `convertClaudeToCodexFrontmatter()` function
+- Codex-specific tool name mapping table
+- Codex config directory detection
+
+### New Files
+
+**`~/.claude/get-shit-done/references/runtime-compatibility.md`**
+Documents which capabilities are available per runtime. Agents and workflows can reference this when making runtime-conditional decisions.
+
+**Codex CLI command files** (generated by installer, not hand-authored)
+The installer produces these from the shared command source files.
+
+---
+
+## Data Flow Changes
+
+### Runtime Context Flow (New)
+
+```
+gsd-tools.cjs init execute-phase
+    ↓ (adds runtime field)
+    {
+      "runtime": "opencode",
+      "parallelization": false,  // effective value
+      "executor_model": "gpt-4o",
+      ...existing fields...
+    }
+    ↓
+Workflow reads runtime from init JSON
+    ↓
+spawn block: if runtime == "claude-code" → Task(...)
+             else → read agent file, execute inline
+```
+
+### Inline Fallback Data Flow
+
+```
+Orchestrator context (has project state, phase info)
+    ↓
+Read gsd-executor.md (agent instruction file)
+    ↓
+Orchestrator executes agent role inline
+    ↓
+Writes same artifacts (PLAN.md, SUMMARY.md, etc.)
+    ↓
+State update via gsd-tools.cjs (unchanged)
+```
+
+The artifact outputs are identical — same files, same paths, same STATE.md updates. Only the execution mechanism differs.
+
+---
 
 ## Architectural Patterns
 
-### Pattern 1: Orchestration over Choreography
+### Pattern 1: Capability-Conditioned Prose (Recommended for GSD)
 
-**What:** Central coordinator manages workflow execution and delegates to specialized agents rather than peer-to-peer agent communication.
+**What:** Workflow markdown contains conditional blocks: "if capability X is available, do A; else do B." The LLM executing the workflow reads the condition and follows the appropriate branch.
 
-**When to use:** Always for GSD-style systems. Provides clear control flow, easier debugging, and avoids cyclic dependencies.
-
-**Trade-offs:**
-- Pro: Single point of observability, clear execution trace
-- Pro: Explicit error handling and compensation logic
-- Pro: Easier to add new agents without updating existing ones
-- Con: Orchestrator becomes single point of failure (mitigate with state persistence)
-
-**Example:**
-```javascript
-// Orchestrator pseudocode
-async function executePlannedPhase(phase) {
-  const state = await loadState();
-  const plan = await loadPlan(phase, state.current_plan);
-
-  // Sequential task execution with state checkpoints
-  for (const task of plan.tasks) {
-    const result = await spawnAgent('gsd-executor', {
-      task: task,
-      context: state.accumulated_context
-    });
-
-    if (!result.success) {
-      // Compensation: rollback changes
-      await compensateTask(task);
-      await updateState({ status: 'failed', last_error: result.error });
-      return;
-    }
-
-    // Checkpoint after each task
-    await updateState({ completed_tasks: [...state.completed_tasks, task.id] });
-  }
-
-  await updateState({ status: 'complete', current_plan: state.current_plan + 1 });
-}
-```
-
-### Pattern 2: State Machine with Compensation
-
-**What:** Model workflow execution as finite state machine with explicit compensating transactions for rollback.
-
-**When to use:** When phases have multiple steps and failures require partial rollback (not just "start over").
+**When to use:** This is the right pattern for GSD because the "adapter" is interpreted by an LLM, not compiled code. Markdown prose is the natural conditional language for LLM-executed workflows.
 
 **Trade-offs:**
-- Pro: Explicit failure handling, no implicit rollback magic
-- Pro: Can resume from checkpoints rather than full restart
-- Pro: Clear audit trail of what was undone
-- Con: Requires defining compensation logic for each step
-- Con: Some changes are non-compensable (e.g., external API calls)
+- Pro: No new infrastructure. Works today in all runtimes that can read markdown.
+- Pro: Single source of truth — one workflow file, multiple execution paths.
+- Pro: Graceful degradation — non-Claude runtimes get sequential inline execution.
+- Con: Verbose. Each spawn site needs ~10-15 lines of conditional prose.
+- Con: LLM must correctly identify its runtime and follow the right branch.
+- Con: Not machine-enforceable — depends on correct LLM behavior.
 
-**Example:**
-```javascript
-// Phase state machine
-const PhaseStateMachine = {
-  states: {
-    PLANNING: {
-      actions: ['create_plan'],
-      transitions: { success: 'EXECUTING', failure: 'FAILED' },
-      compensation: async () => { /* Delete PLAN.md */ }
-    },
-    EXECUTING: {
-      actions: ['execute_tasks'],
-      transitions: { success: 'VERIFYING', failure: 'COMPENSATING' },
-      compensation: async () => { /* Revert file changes via git */ }
-    },
-    VERIFYING: {
-      actions: ['run_verification'],
-      transitions: { success: 'COMPLETE', failure: 'COMPENSATING' },
-      compensation: async () => { /* No compensation needed */ }
-    },
-    COMPENSATING: {
-      actions: ['rollback_previous_states'],
-      transitions: { success: 'FAILED', failure: 'FAILED' }
-    },
-    COMPLETE: { terminal: true },
-    FAILED: { terminal: true }
-  }
-};
+**Example (from execute-phase.md context):**
+```markdown
+## Spawn Executor for Plan {N}
 
-async function executePhase(phase) {
-  let currentState = 'PLANNING';
-  const completedStates = [];
+Read `runtime` from init JSON.
 
-  while (!PhaseStateMachine.states[currentState].terminal) {
-    const stateConfig = PhaseStateMachine.states[currentState];
+**If runtime == "claude-code":**
+Use Task tool:
+  Task(
+    subagent_type="gsd-executor",
+    model="{executor_model}",
+    prompt="Execute plan {N}..."
+  )
+Wait for Task to complete.
 
-    try {
-      for (const action of stateConfig.actions) {
-        await executeAction(action, phase);
-      }
-      currentState = stateConfig.transitions.success;
-      completedStates.push({ state: currentState, action });
-    } catch (error) {
-      // Compensate in reverse order
-      for (const completed of completedStates.reverse()) {
-        await PhaseStateMachine.states[completed.state].compensation();
-      }
-      currentState = stateConfig.transitions.failure;
-    }
-  }
-
-  return currentState;
-}
+**If runtime == "opencode" or "codex-cli":**
+Execute the executor role inline for this plan:
+1. Read ~/.claude/agents/gsd-executor.md for role instructions
+2. Read {plan_file} for the plan to execute
+3. Follow gsd-executor.md instructions completely
+4. Create SUMMARY.md and update STATE.md as instructed
+Note: Proceed to next plan only after this completes.
 ```
 
-### Pattern 3: Context Propagation via Append-Only History
+### Pattern 2: Runtime Field in Config (Prerequisite)
 
-**What:** Maintain cumulative context history throughout workflow execution, passed to each agent.
+**What:** `gsd-tools.cjs` detects and exposes the runtime as a stable, queryable field. Workflows never detect runtime themselves — they always read from init JSON.
 
-**When to use:** Always. Enables agents to understand prior decisions without explicit cross-agent communication.
+**When to use:** Always. Centralizing detection in gsd-tools.cjs means detection logic is in one place, testable, and consistent.
 
 **Trade-offs:**
-- Pro: Simple to implement (file append or array push)
-- Pro: Complete audit trail of execution
-- Pro: Agents automatically have "memory" of previous steps
-- Con: Context grows over time (mitigate with summarization)
-- Con: Requires careful pruning for large workflows
+- Pro: One detection algorithm, all workflows benefit automatically.
+- Pro: Users can override with `"runtime": "codex-cli"` in config.json when detection fails.
+- Con: Heuristic detection may fail in edge cases (e.g., OpenCode installed in non-standard path).
 
-**Example:**
-```javascript
-// Context structure
-const WorkflowContext = {
-  phase: 1,
-  history: [
-    { agent: 'gsd-researcher', output: 'Research complete: Use React + Vite', timestamp: '...' },
-    { agent: 'gsd-planner', output: 'Plan created: 3 tasks', timestamp: '...' },
-    { agent: 'gsd-executor', output: 'Task 1 complete: Init Vite project', timestamp: '...' }
-  ],
-  decisions: [
-    { decision: 'Use React (not Vue)', rationale: 'Team expertise', locked: true }
-  ],
-  artifacts: [
-    { path: '.planning/phases/1/plans/1-PLAN.md', type: 'plan' },
-    { path: 'package.json', type: 'code' }
-  ]
-};
+### Pattern 3: Effective Parallelization Override
 
-// Agents receive filtered context
-function buildAgentContext(fullContext, agentType) {
-  return {
-    ...fullContext,
-    relevant_history: fullContext.history.filter(h => isRelevantTo(h, agentType)),
-    // Summarize if context too large
-    summary: fullContext.history.length > 50 ? summarizeHistory(fullContext.history) : null
-  };
-}
-```
+**What:** When non-Claude runtime detected, override effective parallelization to `false` in init JSON, regardless of `config.json` setting. Workflows already handle `parallelization: false` correctly — sequential execution already works.
 
-### Pattern 4: Dynamic Dimension Dispatch
-
-**What:** Workflow dynamically determines which research dimensions to execute based on project type and user input.
-
-**When to use:** Research phase where not all dimensions (stack, features, architecture, pitfalls) apply to every project.
+**When to use:** Always for non-Claude runtimes. Parallel Task calls on non-Claude runtimes would be meaningless (no parallel subagent mechanism exists).
 
 **Trade-offs:**
-- Pro: Avoids wasted work on irrelevant research
-- Pro: User can add custom dimensions
-- Pro: Extensible without modifying orchestrator
-- Con: Requires initial classification step
-- Con: Dimension definitions must be standardized
+- Pro: No workflow changes needed for sequential degradation — it's already implemented.
+- Pro: Config setting is preserved (user choice), but overridden for safety.
+- Con: Slower execution on non-Claude runtimes (expected and documented).
 
-**Example:**
-```javascript
-// Dynamic dimension dispatch
-async function researchPhase(projectDescription) {
-  // Step 1: Infer dimensions
-  const suggestedDimensions = await inferDimensions(projectDescription);
-  // Returns: ['stack', 'architecture', 'security'] (skipped 'features' and 'pitfalls')
+---
 
-  // Step 2: User edits dimensions
-  const dimensions = await promptUserForDimensions(suggestedDimensions);
-  // User adds: 'compliance' dimension
+## Anti-Patterns to Avoid
 
-  // Step 3: Spawn researcher per dimension
-  const results = await Promise.all(
-    dimensions.map(dim => spawnResearcher(dim, projectDescription))
-  );
+### Anti-Pattern 1: Runtime-Specific Workflow Files
 
-  // Step 4: Synthesize findings
-  return await synthesizeResearch(results);
-}
+**What people do:** Create `execute-phase-opencode.md`, `execute-phase-codex.md` alongside the original.
 
-// Dimension definitions (extensible)
-const DIMENSION_REGISTRY = {
-  'stack': {
-    template: 'templates/research-project/STACK.md',
-    agent: 'gsd-project-researcher',
-    prompt: 'Research technology stack for: {description}'
-  },
-  'architecture': {
-    template: 'templates/research-project/ARCHITECTURE.md',
-    agent: 'gsd-project-researcher',
-    prompt: 'Research architectural patterns for: {description}'
-  },
-  // Custom dimension added by user
-  'compliance': {
-    template: 'templates/research-project/COMPLIANCE.md',
-    agent: 'gsd-project-researcher',
-    prompt: 'Research compliance requirements for: {description}'
-  }
-};
-```
+**Why it's wrong:** 30+ workflow files × 3 runtimes = 90+ files to maintain. Every improvement to `execute-phase.md` must be ported to 2 other files. This has broken multi-runtime support in other tools repeatedly.
 
-## Data Flow
+**Do this instead:** Single workflow file with capability-conditioned prose blocks.
 
-### Request Flow
+### Anti-Pattern 2: Runtime Detection in Workflow Prose
 
-```
-User Command (/gsd:plan-phase 1)
-    ↓
-Orchestrator (workflows/plan-phase.md)
-    ↓
-State Load (gsd-tools.cjs state load)
-    ↓
-Agent Spawn (Task tool → gsd-planner agent)
-    ↓
-Agent Execution (Read context, write PLAN.md)
-    ↓
-State Update (gsd-tools.cjs state update)
-    ↓
-Git Commit (gsd-tools.cjs commit)
-    ↓
-Response to User
-```
+**What people do:** Workflows check `CLAUDE_CODE_VERSION` env vars or file system paths directly.
 
-### Phase Execution Data Flow
+**Why it's wrong:** Detection logic scattered across 30+ workflow files. One change to detection algorithm requires editing every file. Env var names change between CLI versions.
 
-```
-STATE.md (current phase, plan counter, context)
-    ↓
-Orchestrator reads current position
-    ↓
-Spawns Agent with Context
-    ↓ (agent prompt includes)
-Project Context (@references from STATE.md)
-Prior Phase Summaries (.planning/phases/*/SUMMARY.md)
-Current Plan (.planning/phases/{N}/plans/{M}-PLAN.md)
-    ↓
-Agent produces artifacts (code, SUMMARY.md)
-    ↓
-Artifacts written to disk
-    ↓
-STATE.md updated (plan counter++, context accumulation)
-    ↓
-Context available to next agent/phase
-```
+**Do this instead:** Detection only in `gsd-tools.cjs loadConfig()`. Workflows read `runtime` from init JSON exclusively.
 
-### Cross-Phase Context Propagation
+### Anti-Pattern 3: Assuming Task Tool Availability
 
-```
-Phase 1 Complete → SUMMARY.md written
-    ↓
-STATE.md updated:
-  - Accumulated context += "Phase 1: Foundation complete"
-  - Decisions += Phase 1 decisions
-    ↓
-Phase 2 Planning starts
-    ↓
-Planner receives:
-  - STATE.md context (includes Phase 1 summary)
-  - Direct @-reference to Phase 1 SUMMARY.md
-  - Project-level decisions from PROJECT.md
-    ↓
-Planner creates Phase 2 plan building on Phase 1 work
-```
+**What people do:** Skip the runtime check, assume Task always works.
 
-### State Management Data Flow
+**Why it's wrong:** OpenCode users get silent failures or runtime errors mid-workflow. The capability gap is real and needs explicit handling.
 
-All state mutations go through gsd-tools.cjs to maintain consistency:
+**Do this instead:** Every Task call site checks runtime and has an inline fallback.
 
-```
-┌─────────────────────────────────────────┐
-│         State Mutation Sources          │
-│  (Orchestrators, Agents via Tool calls) │
-└──────────────────┬──────────────────────┘
-                   ↓
-         ┌─────────────────────┐
-         │   gsd-tools.cjs     │
-         │  (Atomic Operations)│
-         └──────────┬───────────┘
-                    ↓
-    ┌───────────────┴────────────────┐
-    ↓                                ↓
-.planning/STATE.md            .planning/config.json
-.planning/ROADMAP.md          Git commits
-```
+### Anti-Pattern 4: Separate Agent Files Per Runtime
 
-## Scaling Considerations
+**What people do:** Create `gsd-executor-opencode.md`, `gsd-executor-codex.md`.
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1-5 phases | Simple linear pipeline (plan → execute → verify) is sufficient |
-| 5-20 phases | Add episodic memory (phase summaries), cross-phase context propagation |
-| 20+ phases | Implement phase grouping (milestones), context summarization, selective history |
+**Why it's wrong:** Same maintenance problem as workflow duplication, plus agent files are 200-400 lines each. Tool name differences (Read vs read) are already handled by the installer's frontmatter converter.
 
-### Scaling Priorities
+**Do this instead:** Shared agent files. The installer converts tool names at install time. Runtime differences in agent behavior are handled in workflow spawn blocks, not agent files.
 
-1. **First bottleneck:** Context window exhaustion
-   - **Fix:** Summarization of old phases, selective @-references instead of full history
+---
 
-2. **Second bottleneck:** Orchestrator complexity
-   - **Fix:** Extract sub-workflows, introduce workflow composition
+## Build Order (Suggested)
 
-## Anti-Patterns
+Build order based on dependencies and validation opportunities:
 
-### Anti-Pattern 1: Monolithic Orchestrator
+### Phase A: Foundation (Validate Detection Works)
 
-**What people do:** Put all workflow logic in one massive orchestrator function with nested conditionals.
+1. **Runtime detection in gsd-tools.cjs**
+   - Add `runtime` to `loadConfig()`
+   - Add env var checks, filesystem heuristics
+   - Add `runtime` to all `init *` JSON payloads
+   - Add `config.json` override support
+   - Validate: Run `gsd-tools.cjs init execute-phase 1` on Claude Code, verify `"runtime": "claude-code"` in output
 
-**Why it's wrong:** Becomes unmaintainable, hard to test, impossible to extend without modifying core logic.
+2. **Parallelization override in init JSON**
+   - When `runtime != "claude-code"`, force `"parallelization": false` in init output
+   - Existing sequential execution code in workflows already handles this correctly
 
-**Do this instead:** Compose workflows from smaller reusable sub-workflows. Extract phase-specific logic into dedicated orchestrators.
+### Phase B: OpenCode Parity (Most Users, Existing Install Base)
 
-```javascript
-// Bad
-async function megaOrchestrator(command) {
-  if (command === 'new-project') {
-    // 500 lines of project initialization
-  } else if (command === 'plan-phase') {
-    // 300 lines of planning logic
-  } else if (command === 'execute-phase') {
-    // 400 lines of execution logic
-  }
-  // ... 2000 more lines
-}
+3. **Capability audit — document all Task call sites**
+   - List every `Task(...)` call across all 30+ workflow files
+   - Prioritize: `execute-phase.md`, `plan-phase.md`, `new-project.md` (highest-traffic workflows)
 
-// Good
-async function newProjectOrchestrator() { /* focused logic */ }
-async function planPhaseOrchestrator() { /* focused logic */ }
-async function executePhaseOrchestrator() { /* focused logic */ }
+4. **Add inline fallback blocks to Task call sites (5 workflows)**
+   - Start with `execute-phase.md` (core execution path)
+   - Then `plan-phase.md` (planning path)
+   - Then `new-project.md` (project init path)
+   - Test on OpenCode after each workflow
 
-const WORKFLOW_REGISTRY = {
-  'new-project': newProjectOrchestrator,
-  'plan-phase': planPhaseOrchestrator,
-  'execute-phase': executePhaseOrchestrator
-};
-```
+5. **OpenCode-specific model defaults in gsd-tools.cjs**
+   - Add default model table for OpenCode (likely OpenAI models if OpenCode routes to OpenAI)
+   - Document in `runtime-compatibility.md`
 
-### Anti-Pattern 2: Implicit State Transitions
+### Phase C: Codex CLI Support (Net New)
 
-**What people do:** Update STATE.md directly from agents without going through centralized state management.
+6. **Codex CLI capability research** (phase-specific research needed — see gaps)
+   - Verify: command format, tool names, agent file format, config directory
+   - Verify: what env vars Codex CLI sets (for detection)
+   - Verify: whether any subagent mechanism exists
 
-**Why it's wrong:** Race conditions, inconsistent state, no audit trail, hard to debug.
+7. **Codex CLI installer support in bin/install.js**
+   - New `installCodexCLI()` function
+   - Command format converter
+   - Tool name mapping table
+   - Config directory detection
 
-**Do this instead:** All state mutations through gsd-tools.cjs atomic operations. Agents write artifacts, orchestrator updates state.
+8. **Validate Codex CLI end-to-end**
+   - Install GSD on Codex CLI
+   - Run `/gsd:new-project` through completion
+   - Document any remaining gaps
 
-```javascript
-// Bad (agent directly modifying state)
-// In gsd-executor.md
-await fs.writeFile('.planning/STATE.md', newState);
-
-// Good (agent writes artifact, orchestrator updates state)
-// In gsd-executor.md
-await fs.writeFile('.planning/phases/1/plans/1-SUMMARY.md', summary);
-// Return to orchestrator, which then:
-await bash('node gsd-tools.cjs state update current_plan 2');
-```
-
-### Anti-Pattern 3: Tight Coupling Between Agents
-
-**What people do:** Agent A directly calls Agent B, passing custom data structures.
-
-**Why it's wrong:** Creates dependency graph complexity, prevents parallel execution, hard to replace agents.
-
-**Do this instead:** All inter-agent communication via orchestrator and shared state (STATE.md, artifacts on disk).
-
-```javascript
-// Bad (agents coupled)
-const plannerResult = await gsdPlanner.createPlan(phase);
-const executorResult = await gsdExecutor.execute(plannerResult.tasks);
-
-// Good (orchestrator mediates)
-await spawnAgent('gsd-planner', { phase });
-// Planner writes PLAN.md to disk
-const plan = await readPlan(phase);
-await spawnAgent('gsd-executor', { phase, plan_path: plan.path });
-// Executor reads PLAN.md independently
-```
-
-### Anti-Pattern 4: No Compensation Logic
-
-**What people do:** Assume all operations succeed, no rollback on failure.
-
-**Why it's wrong:** Leaves system in inconsistent state (partial work committed, state says incomplete).
-
-**Do this instead:** Define compensation actions for each state. Use git for code rollback, structured state for tracking what to undo.
-
-```javascript
-// Bad (no rollback)
-await executeTask1(); // Succeeds
-await executeTask2(); // Fails
-// System now has Task 1 changes but workflow marked as failed
-
-// Good (with compensation)
-const completedTasks = [];
-try {
-  await executeTask1();
-  completedTasks.push({ id: 1, compensation: () => revertTask1() });
-
-  await executeTask2();
-  completedTasks.push({ id: 2, compensation: () => revertTask2() });
-} catch (error) {
-  // Compensate in reverse order
-  for (const task of completedTasks.reverse()) {
-    await task.compensation();
-  }
-  throw error;
-}
-```
+---
 
 ## Integration Points
 
-### Internal Boundaries
-
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| Command → Orchestrator | Direct function call | Orchestrators are imported as functions |
-| Orchestrator → Agent | Task tool (spawns agent) | Agents run in isolated context |
-| Agent → Tools | Tool calls (Read, Write, Bash) | Agents have limited tool access |
-| Agent → State | Via gsd-tools.cjs CLI | Agents never directly modify state |
-| Orchestrator → State | Via gsd-tools.cjs CLI | Atomic operations, transactional |
+| Workflow → Runtime | Init JSON `runtime` field | Workflows never detect runtime directly |
+| gsd-tools.cjs → Config | `config.json` `runtime` field | User override path |
+| Installer → Runtime | `installCodexCLI()` function | New for Codex; existing for Claude/OpenCode |
+| Workflow spawn site → Agent | Inline prose when no Task | Agent file read by orchestrator |
+| Model resolution → Runtime | Default model table per runtime | In `MODEL_PROFILES` or separate table |
 
-### Extensibility Boundaries
+---
 
-For adding new capabilities without breaking existing architecture:
+## Open Gaps (Require Phase-Specific Research)
 
-**New Agent:**
-- Create markdown file in `agents/`
-- Add to MODEL_PROFILES table in gsd-tools.cjs
-- Spawn via existing Task tool from orchestrators
+### Gap 1: Codex CLI Command Format — UNKNOWN, CRITICAL
 
-**New Workflow:**
-- Create markdown file in `workflows/`
-- Add command in main CLI routing
-- Use existing agents via Task tool
+The installer needs to know the exact command file format for Codex CLI:
+- File location (config directory path)
+- Frontmatter schema (tool names, allowed-tools equivalent)
+- Command namespace (does `/gsd:plan-phase` work or does it need conversion?)
+- Whether agent files are supported at all
 
-**New Dimension (research):**
-- Add dimension definition to registry
-- Create template in `templates/research-project/`
-- Dimension automatically available to research orchestrator
+**Action:** Codex CLI capability audit must precede any Codex installer work.
 
-**New State Fields:**
-- Add field to STATE.md schema
-- Add getter/setter in gsd-tools.cjs state operations
-- No changes to existing code
+### Gap 2: OpenCode Subagent Mechanism — UNKNOWN
 
-## Build Order for GSD Extensions
+OpenCode may have added a subagent spawning mechanism after GSD's existing support was written. The installer code predates any such feature. Verify:
+- Does OpenCode have a `skill` tool that enables sub-workflow invocation?
+- Does it have any parallel execution primitive?
+- Does it support model selection per invocation?
 
-Based on component dependencies, implement in this order:
+**Action:** Read current OpenCode documentation before deciding on inline fallback vs. native mechanism.
 
-### Phase 1: Foundation (No Dependencies)
-1. **Extend gsd-tools.cjs state operations**
-   - Add dimension registry CRUD
-   - Add phase rollback state tracking
-   - Add iteration metadata
+### Gap 3: Codex CLI Env Vars for Detection — UNKNOWN
 
-2. **Create dimension templates**
-   - Standard dimensions (stack, features, architecture, pitfalls)
-   - Custom dimension template structure
+Without knowing what env vars Codex CLI sets, the detection heuristic for "this is Codex CLI" cannot be implemented.
 
-### Phase 2: Dynamic Dispatch (Depends on Phase 1)
-3. **Dimension inference logic**
-   - Project type classifier
-   - Dimension recommendation engine
-   - User editing interface
+**Action:** Find Codex CLI documentation on process environment.
 
-4. **Updated research orchestrator**
-   - Load dimensions from registry (not hardcoded)
-   - Spawn researchers dynamically
-   - Handle custom dimensions
+### Gap 4: Tool Name Mapping for Codex CLI — UNKNOWN
 
-### Phase 3: State Machine Extensions (Depends on Phase 1)
-5. **Phase state machine**
-   - Define states, transitions, actions
-   - Compensation logic per state
-   - Checkpoint/resume mechanism
+Claude Code tools (Read, Write, Bash, Grep, Glob, AskUserQuestion) may have different names in Codex CLI. The installer's `convertClaudeToOpencodeFrontmatter()` pattern would need a Codex-equivalent function.
 
-6. **Rollback operations**
-   - Git-based code rollback
-   - State snapshot/restore
-   - Artifact cleanup
+**Action:** Same Codex CLI capability audit as Gap 1.
 
-### Phase 4: Cross-Phase Context (Depends on Phase 2, 3)
-7. **Context accumulation**
-   - Phase summary aggregation
-   - Decision tracking across phases
-   - Pattern detection from history
+---
 
-8. **Context propagation**
-   - Filtered context builders per agent type
-   - Summarization for large contexts
-   - Selective @-reference system
+## Confidence Assessment
 
-### Phase 5: Workflow Composition (Depends on all)
-9. **Sub-workflow extraction**
-   - Reusable workflow modules
-   - Workflow registry and loader
-   - Composition primitives
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Task tool as gap | HIGH | Direct code inspection confirms Task calls throughout workflows |
+| OpenCode install-level support | HIGH | Installer code directly inspected |
+| OpenCode workflow gap | HIGH | No Task equivalent found in OpenCode docs or installer |
+| Inline fallback pattern | HIGH | Pattern is straightforward and runtime-independent |
+| Runtime detection via gsd-tools | HIGH | Detection centralization is the right pattern regardless of runtime specifics |
+| Codex CLI specifics | LOW | Based on training data only; Codex CLI evolves rapidly |
+| OpenCode subagent mechanism | LOW | May exist in current version; not confirmed from inspection |
 
-10. **Custom workflows**
-    - User-defined workflow DSL
-    - Workflow validation
-    - Integration with existing orchestrators
-
-## Compatibility with Existing GSD Architecture
-
-### Preserved Patterns
-- ✅ Markdown-based agents (no changes to agent format)
-- ✅ Task tool for agent spawning (existing tool, no modifications)
-- ✅ gsd-tools.cjs for atomic operations (extend, don't replace)
-- ✅ STATE.md + config.json state management (add fields, keep existing)
-- ✅ .planning/ directory structure (add subdirectories, keep existing files)
-- ✅ Git integration via gsd-tools.cjs commit (no changes)
-- ✅ Zero external dependencies (Node.js built-ins only)
-
-### Extension Points (Non-Breaking)
-- 📝 **Dimension registry**: New data structure in gsd-tools.cjs, doesn't affect existing code
-- 📝 **Phase state machine**: New workflow orchestrator, existing orchestrators unchanged
-- 📝 **Context propagation**: Enhanced agent prompts, backward compatible with current prompts
-- 📝 **Workflow composition**: New abstraction layer, existing workflows still callable directly
-
-### Migration Strategy
-1. **Add new features in parallel** (don't modify existing)
-2. **Gradual opt-in** (features disabled by default, enable via config.json)
-3. **Fallback to current behavior** (if new features fail, use existing pipeline)
-4. **Incremental testing** (validate each component against existing workflows)
+---
 
 ## Sources
 
-### Agentic Workflow Architecture
-- [Vellum: Agentic Workflows in 2026](https://www.vellum.ai/blog/agentic-workflows-emerging-architectures-and-design-patterns)
-- [Stack AI: The 2026 Guide to Agentic Workflow Architectures](https://www.stack-ai.com/blog/the-2026-guide-to-agentic-workflow-architectures)
-- [AWS Prescriptive Guidance: Agentic AI Patterns](https://docs.aws.amazon.com/prescriptive-guidance/latest/agentic-ai-patterns/introduction.html)
-- [Google Cloud: Choose a Design Pattern for Agentic AI](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system)
-
-### Multi-Agent Orchestration
-- [Microsoft: Multi-agent Reference Architecture](https://microsoft.github.io/multi-agent-reference-architecture/docs/context-engineering/Agents-Orchestration.html)
-- [Redis: Top AI Agent Orchestration Platforms in 2026](https://redis.io/blog/ai-agent-orchestration-platforms/)
-- [OneReach: MCP & Multi-Agent AI 2026](https://onereach.ai/blog/mcp-multi-agent-ai-collaborative-intelligence/)
-
-### State Machines and Rollback
-- [Microsoft Azure: Saga Design Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga)
-- [Dapr: Workflow Patterns](https://docs.dapr.io/developing-applications/building-blocks/workflow/workflow-patterns/)
-- [Microservices.io: Saga Pattern](https://microservices.io/patterns/data/saga.html)
-- [arXiv: StateFlow - State-Driven Workflows for LLMs](https://arxiv.org/html/2403.11322v5)
-
-### Workflow DSLs
-- [Serverless Workflow DSL Specification](https://github.com/serverlessworkflow/specification/blob/main/dsl.md)
-- [AWS Step Functions: State Machines](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html)
+- GSD codebase: `/Users/thelorax/.claude/get-shit-done/` (direct inspection, HIGH confidence)
+- GSD installer: `bin/install.js` — multi-runtime support referenced in `INTEGRATIONS.md` (HIGH confidence)
+- GSD codebase map: `.planning/codebase/INTEGRATIONS.md`, `.planning/codebase/ARCHITECTURE.md` (HIGH confidence)
+- Codex CLI specifics: Training data only (LOW confidence — verify before implementation)
+- OpenCode subagent capability: Not confirmed — needs verification before Phase B implementation
 
 ---
-*Architecture research for: GSD Framework Extensions (Selectable Research Dimensions, Phase State Machines, Cross-Agent Context)*
+
+*Architecture research for: GSD v1.1 — Codex CLI + OpenCode multi-runtime support*
 *Researched: 2026-02-16*
+
+<token_report>
+dimensions: architecture
+model: claude-sonnet-4-5-20250929
+input_tokens: 92000
+output_tokens: 4800
+estimated_cost_usd: 0.3480
+note: estimated from session context; actual may vary +/-20%
+</token_report>
