@@ -36,12 +36,17 @@ GSD agents should accumulate and apply context intelligently — the right resea
 - [ ] Cross-phase learning — patterns and mistakes from prior phases inform future ones
 - [ ] Custom workflows — user-defined workflow steps beyond the fixed GSD pipeline
 - [ ] Idea capture — todos for actionable items + backlog file for bigger ideas
+- [ ] Codex CLI runtime support — GSD workflows function correctly inside Codex CLI
+- [ ] OpenCode runtime parity — real workflow parity beyond install-level support
+- [ ] Runtime detection — GSD adapts behavior based on which CLI it's running in
+- [ ] Cross-runtime agent orchestration — subagent spawning patterns for non-Claude runtimes
 
 ### Out of Scope
 
-- Multi-provider model routing (OpenAI Codex, Gemini) — separate effort on `fork/multi-provider-routing` branch
+- Multi-provider model routing (switching GSD to call OpenAI/Gemini APIs) — separate effort on `fork/multi-provider-routing` branch
 - Changes to upstream installer/distribution — focus on workflow and agent improvements
 - Mobile or web interfaces — CLI-only tool
+- Gemini CLI runtime parity — deferred to v1.2+
 
 ## Context
 
@@ -58,6 +63,30 @@ GSD agents should accumulate and apply context intelligently — the right resea
 - **Multi-runtime**: Agent/workflow changes must work across Claude Code, OpenCode, and Gemini CLI
 - **Fork fragility**: Local install is upstream + manually copied fork files. Any `/gsd:update` overwrites fork additions until PRs merge or install switches to fork
 
+## Current Milestone: v1.0 GSD Framework Improvements
+
+**Goal:** Transform GSD's fixed pipeline into a flexible, context-aware system with selectable research dimensions, observability, idea capture, cross-phase memory, phase iteration, and custom workflow controls.
+
+**Target features:**
+- Selectable research dimensions (user-editable, parameterized researchers)
+- Observability (token/cost tracking per dimension and phase)
+- Idea capture system (IDEAS.md backlog)
+- Cross-phase memory and context awareness
+- Phase state machine with iteration/rollback
+- Custom workflow controls
+
+## Upcoming Milestone: v1.1 Codex + OpenCode Support
+
+**Goal:** GSD works on Codex CLI and OpenCode with the same quality it has on Claude Code — full parity in agent orchestration, questioning flows, subagent spawning, and token efficiency.
+
+**Target features:**
+- Capability audit: document what each runtime actually supports vs. Claude Code
+- OpenCode: real workflow parity (currently install-only)
+- Codex CLI: net-new support (no GSD support today)
+- Runtime detection and adaptive behavior
+- Agent orchestration / subagent patterns for non-Claude runtimes
+- Token efficiency for models with different behavior characteristics
+
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
@@ -68,4 +97,4 @@ GSD agents should accumulate and apply context intelligently — the right resea
 | Multi-provider routing out of scope | Already on separate branch, different concern | — Pending |
 
 ---
-*Last updated: 2026-02-16 after initialization*
+*Last updated: 2026-02-16 after v1.1 milestone definition*

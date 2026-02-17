@@ -67,8 +67,12 @@ None yet.
 
 None yet.
 
+## Milestone Planning
+
+**v1.1 Codex + OpenCode Support** — milestone started 2026-02-16. Phases defined in ROADMAP.md. Requirements in REQUIREMENTS.md (v1.1 section).
+
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 01-03-PLAN.md (observability backend: cost tracking pipeline)
+Last session: 2026-02-16
+Stopped at: v1.1 milestone defined (requirements + roadmap)
 Resume file: None
