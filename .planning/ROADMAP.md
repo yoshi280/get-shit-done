@@ -32,12 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Token usage is tracked and displayed per research dimension
   6. Token usage is tracked and displayed per phase execution
   7. Cost summary appears in progress reports
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Dimension catalog system (9 dimension files: 4 migrated + 5 new)
+- [ ] 01-02-PLAN.md -- Dimension selection flow in plan-phase.md + researcher parameterization
+- [ ] 01-03-PLAN.md -- Observability backend (cost tracking tools, STATE.md tracker, progress display)
 
 ### Phase 2: Idea Capture System
 **Goal**: Users have a structured place to capture emerging ideas during execution without cluttering actionable todos
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Selectable Research Dimensions + Observability | 0/3 | Not started | - |
+| 1. Selectable Research Dimensions + Observability | 0/3 | Planned | - |
 | 2. Idea Capture System | 0/2 | Not started | - |
 | 3. Cross-Phase Memory and Context Awareness | 0/3 | Not started | - |
 | 4. Phase State Machine with Iteration | 0/3 | Not started | - |
