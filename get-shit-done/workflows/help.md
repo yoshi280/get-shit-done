@@ -88,6 +88,19 @@ See what Claude is planning to do before it starts.
 
 Usage: `/gsd:list-phase-assumptions 3`
 
+**`/gsd:analyze <phase> [specialist-name] [--all]`**
+Run specialist analysis on a phase for domain-specific recommendations.
+
+- Loads specialist catalog (global + project-level, project overrides)
+- Spawns specialist agents in parallel for selected analysis types
+- Produces `{phase-dir}/specialists/{name}-ANALYSIS.md` files
+- Surfaces urgent findings that could change the plan
+- Analysis feeds into planner as advisory input
+
+Usage: `/gsd:analyze 2` (interactive selection)
+Usage: `/gsd:analyze 2 data-structure-analyst` (specific specialist)
+Usage: `/gsd:analyze 2 --all` (run all specialists)
+
 **`/gsd:plan-phase <number>`**
 Create detailed execution plan for a specific phase.
 
@@ -95,6 +108,7 @@ Create detailed execution plan for a specific phase.
 - Breaks phase into concrete, actionable tasks
 - Includes verification criteria and success measures
 - Multiple plans per phase supported (XX-01, XX-02, etc.)
+- Optional specialist analysis before planning (`--specialists` / `--skip-specialists`)
 
 Usage: `/gsd:plan-phase 1`
 Result: Creates `.planning/phases/01-foundation/01-01-PLAN.md`
@@ -363,6 +377,7 @@ Usage: `/gsd:join-discord`
 │   └── v1.0-phases/          # Archived phase dirs (via /gsd:cleanup or --archive-phases)
 │       ├── 01-foundation/
 │       └── 02-core-features/
+├── specialists/          # Project-level specialist definitions (override global)
 ├── codebase/             # Codebase map (brownfield projects)
 │   ├── STACK.md          # Languages, frameworks, dependencies
 │   ├── ARCHITECTURE.md   # Patterns, layers, data flow
@@ -373,6 +388,8 @@ Usage: `/gsd:join-discord`
 │   └── CONCERNS.md       # Tech debt, known issues
 └── phases/
     ├── 01-foundation/
+    │   ├── specialists/         # Specialist analysis files
+    │   │   └── data-structure-analyst-ANALYSIS.md
     │   ├── 01-01-PLAN.md
     │   └── 01-01-SUMMARY.md
     └── 02-core-features/

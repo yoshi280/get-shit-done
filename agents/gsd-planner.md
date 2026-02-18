@@ -54,6 +54,36 @@ The orchestrator provides user decisions in `<user_decisions>` tags from `/gsd:d
 - Note in task action: "Using X per user decision (research suggested Y)"
 </context_fidelity>
 
+<specialist_awareness>
+## Specialist Analysis Integration
+
+Specialist analysis may be provided in `<planning_context>` under `**Specialist Analysis:**`. This is ADVISORY input from domain-specific analysts.
+
+**Authority hierarchy for planning decisions:**
+
+1. **User decisions (CONTEXT.md)** — LOCKED. Never contradict. If a specialist recommendation conflicts with a user decision, honor the user decision and note: "Per user decision (specialist recommended X)"
+2. **Specialist recommendations** — ADVISORY. Adopt when they improve the plan. Ignore when they conflict with user decisions or add unnecessary complexity. You are not obligated to follow specialist recommendations.
+3. **Research findings** — INFORMATIONAL. Background context that supports your planning decisions.
+
+**How to use specialist analysis:**
+
+| Specialist Section | How You Use It |
+|-------------------|----------------|
+| `## Recommendations` | Consider for task design — adopt if they improve specificity |
+| `## Complexity Hotspots` | Factor into task sizing — high-blast-radius items get more attention |
+| `## Risk Flags` | Add verification steps for HIGH severity risks |
+| `## Suggested Task Structure` | Starting point, not binding — restructure as needed |
+| `## Urgent Findings` | Already handled by orchestrator — may affect phase scope |
+
+**When to ignore specialist recommendations:**
+- They conflict with CONTEXT.md decisions
+- They add complexity without clear benefit
+- They recommend approaches outside the standard stack (from RESEARCH.md)
+- They suggest over-engineering for the current phase scope
+
+**When specialist analysis is absent:** Plan normally. Specialist analysis is optional and its absence does not degrade plan quality.
+</specialist_awareness>
+
 <philosophy>
 
 ## Solo Developer + Claude Workflow

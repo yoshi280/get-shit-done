@@ -363,6 +363,71 @@ mkdir -p ".planning/phases/${padded_phase}-${phase_slug}"
 Write file.
 </step>
 
+<step name="offer_specialist_analysis">
+Check if specialists with `triggers` containing `discuss-phase` exist:
+
+```bash
+GLOBAL_SPECS=$(ls ~/.claude/get-shit-done/specialists/*.md 2>/dev/null)
+PROJECT_SPECS=$(ls .planning/specialists/*.md 2>/dev/null)
+```
+
+For each specialist file, parse frontmatter and check if `triggers` array contains `discuss-phase`.
+
+**If no discuss-phase specialists found:** Skip to confirm_creation.
+
+**If discuss-phase specialists found:**
+
+Use AskUserQuestion:
+- header: "Analysis"
+- question: "Run specialist analysis with the context just gathered? This can surface recommendations before planning."
+- options:
+  - "Run analysis" — Spawn specialists with phase context
+  - "Skip" — Proceed to planning without specialist analysis
+
+**If "Run analysis":**
+
+For each discuss-phase specialist, spawn in parallel (same pattern as analyze workflow Step 5):
+
+```bash
+mkdir -p "${phase_dir}/specialists"
+```
+
+```
+Task(prompt="First, read ~/.claude/agents/gsd-specialist.md for your role and instructions.
+
+<specialist_body>
+{prompt_body from specialist catalog entry}
+</specialist_body>
+
+<specialist_meta>
+name: {specialist_name}
+authority:
+  can_create_tasks: {from frontmatter}
+  can_create_phases: {from frontmatter}
+</specialist_meta>
+
+<phase_context>
+**Phase:** {phase_number} - {phase_name}
+**Requirements:** {from .planning/REQUIREMENTS.md}
+**CONTEXT.md:** {the CONTEXT.md just written in write_context step}
+</phase_context>
+
+<output>
+Write to: {phase_dir}/specialists/{specialist_name}-ANALYSIS.md
+</output>
+", subagent_type="general-purpose", model="sonnet", description="{specialist_name} analysis")
+```
+
+Commit analysis:
+```bash
+node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(${padded_phase}): specialist analysis" --files "${phase_dir}/specialists/"
+```
+
+Note analysis results in confirm_creation output.
+
+**If "Skip":** Continue to confirm_creation.
+</step>
+
 <step name="confirm_creation">
 Present summary and next steps:
 

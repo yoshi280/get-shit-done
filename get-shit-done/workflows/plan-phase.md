@@ -144,6 +144,129 @@ Task(
 - **`## RESEARCH COMPLETE`:** Display confirmation, continue to step 6
 - **`## RESEARCH BLOCKED`:** Display blocker, offer: 1) Provide context, 2) Skip research, 3) Abort
 
+## 5.5. Run Specialist Analysis (Optional)
+
+**Skip if:** `--skip-specialists` flag, no specialists in catalog, or `workflow.specialists` is false (from config).
+
+```bash
+SPECIALISTS_ENABLED=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-get workflow.specialists 2>/dev/null || echo "true")
+```
+
+**If `SPECIALISTS_ENABLED` is false AND no `--specialists` flag:** Skip to step 6.
+
+### Check Specialist Catalog
+
+```bash
+GLOBAL_SPECS=$(ls ~/.claude/get-shit-done/specialists/*.md 2>/dev/null)
+PROJECT_SPECS=$(ls .planning/specialists/*.md 2>/dev/null)
+```
+
+**If no specialists found (both empty):** Skip silently to step 6.
+
+### Check Existing Analysis
+
+```bash
+EXISTING_ANALYSIS=$(ls "${PHASE_DIR}/specialists/"*-ANALYSIS.md 2>/dev/null)
+```
+
+**If existing analysis found AND no `--specialists` flag:** Use existing, skip to step 6.
+
+### Load and Filter Catalog
+
+For each `.md` file in global and project directories, extract frontmatter: `name`, `short_description`, `triggers`, `authority`. Project overrides global on name collision.
+
+Filter to specialists with `triggers` containing `plan-phase`. Store as `PLAN_PHASE_SPECS`.
+
+**If no plan-phase specialists after filtering:** Skip to step 6.
+
+### Select Specialists
+
+**If YOLO mode (from config `mode: yolo`):** Auto-run all plan-phase specialists.
+
+**If interactive mode:**
+
+Use AskUserQuestion (multiSelect: true):
+- header: "Specialists"
+- question: "Run specialist analysis before planning Phase {X}? Select specialists:"
+- options: One per plan-phase specialist: `{name} — {short_description}`. All pre-selected.
+  Add "Skip specialists" option: description "Plan without specialist analysis"
+
+**If "Skip specialists" selected or no specialists selected:** Skip to step 6.
+
+### Spawn Specialist Agents
+
+Display banner:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► SPECIALIST ANALYSIS — PHASE {X}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+◆ Spawning {N} specialist(s)...
+```
+
+Create output directory:
+```bash
+mkdir -p "${PHASE_DIR}/specialists"
+```
+
+For each selected specialist, read the prompt body (strip YAML frontmatter). Spawn in parallel:
+
+```
+Task(prompt="First, read ~/.claude/agents/gsd-specialist.md for your role and instructions.
+
+<specialist_body>
+{prompt_body from specialist catalog entry}
+</specialist_body>
+
+<specialist_meta>
+name: {specialist_name}
+authority:
+  can_create_tasks: {from frontmatter}
+  can_create_phases: {from frontmatter}
+</specialist_meta>
+
+<phase_context>
+**Phase:** {phase_number} - {phase_name}
+**Phase Description:** {phase_desc}
+**Phase Requirement IDs:** {phase_req_ids}
+
+**Requirements:** {requirements_content}
+**Roadmap:** {roadmap_content}
+**State:** {state_content}
+**CONTEXT.md:** {context_content}
+**RESEARCH.md:** {research_content}
+</phase_context>
+
+<output>
+Write to: {PHASE_DIR}/specialists/{specialist_name}-ANALYSIS.md
+</output>
+", subagent_type="general-purpose", model="sonnet", description="{specialist_name} analysis")
+```
+
+### Handle Returns
+
+For each specialist:
+- **`## ANALYSIS COMPLETE`:** Display confirmation
+- **`## ANALYSIS BLOCKED`:** Display blocker
+
+### Handle Urgent Findings
+
+Scan for non-empty `## Urgent Findings` in analysis files. If found, present each and offer:
+- "Insert phase" — Note for `/gsd:insert-phase` after planning
+- "Note for planning" — Mark as high-priority for planner
+- "Dismiss" — No action
+
+### Commit Analysis
+
+```bash
+node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(${padded_phase}): specialist analysis" --files "${PHASE_DIR}/specialists/"
+```
+
+Store specialist content for step 7:
+```bash
+SPECIALIST_CONTENT=$(cat "${PHASE_DIR}/specialists/"*-ANALYSIS.md 2>/dev/null)
+```
+
 ## 6. Check Existing Plans
 
 ```bash
@@ -165,6 +288,9 @@ RESEARCH_CONTENT=$(echo "$INIT" | jq -r '.research_content // empty')
 VERIFICATION_CONTENT=$(echo "$INIT" | jq -r '.verification_content // empty')
 UAT_CONTENT=$(echo "$INIT" | jq -r '.uat_content // empty')
 CONTEXT_CONTENT=$(echo "$INIT" | jq -r '.context_content // empty')
+
+# Load specialist analysis if produced in step 5.5
+SPECIALIST_CONTENT=$(cat "${PHASE_DIR}/specialists/"*-ANALYSIS.md 2>/dev/null)
 ```
 
 ## 8. Spawn gsd-planner Agent
@@ -199,6 +325,7 @@ IMPORTANT: If context exists below, it contains USER DECISIONS from /gsd:discuss
 {context_content}
 
 **Research:** {research_content}
+**Specialist Analysis:** {specialist_content}
 **Gap Closure (if --gaps):** {verification_content} {uat_content}
 </planning_context>
 

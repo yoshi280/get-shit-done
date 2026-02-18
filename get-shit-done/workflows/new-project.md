@@ -152,6 +152,15 @@ AskUserQuestion([
     ]
   },
   {
+    header: "Specialists",
+    question: "Run specialist analysis before planning? (adds tokens/time)",
+    multiSelect: false,
+    options: [
+      { label: "Yes (Recommended)", description: "Domain-specific analysis (data structures, performance, etc.)" },
+      { label: "No", description: "Plan without specialist input" }
+    ]
+  },
+  {
     header: "AI Models",
     question: "Which AI models for planning agents?",
     multiSelect: false,
@@ -177,6 +186,7 @@ Create `.planning/config.json` with mode set to "yolo":
     "research": true|false,
     "plan_check": true|false,
     "verifier": true|false,
+    "specialists": true|false,
     "auto_advance": true
   }
 }
@@ -418,6 +428,7 @@ These spawn additional agents during planning/execution. They add tokens and tim
 | **Researcher** | Before planning each phase | Investigates domain, finds patterns, surfaces gotchas |
 | **Plan Checker** | After plan is created | Verifies plan actually achieves the phase goal |
 | **Verifier** | After phase execution | Confirms must-haves were delivered |
+| **Specialists** | Before planning each phase | Domain-specific analysis (data structures, performance, etc.) |
 
 All recommended for important projects. Skip for quick experiments.
 
@@ -451,6 +462,15 @@ questions: [
     ]
   },
   {
+    header: "Specialists",
+    question: "Run specialist analysis before planning? (adds tokens/time)",
+    multiSelect: false,
+    options: [
+      { label: "Yes (Recommended)", description: "Domain-specific analysis (data structures, performance, etc.)" },
+      { label: "No", description: "Plan without specialist input" }
+    ]
+  },
+  {
     header: "AI Models",
     question: "Which AI models for planning agents?",
     multiSelect: false,
@@ -475,7 +495,8 @@ Create `.planning/config.json` with all settings:
   "workflow": {
     "research": true|false,
     "plan_check": true|false,
-    "verifier": true|false
+    "verifier": true|false,
+    "specialists": true|false
   }
 }
 ```
